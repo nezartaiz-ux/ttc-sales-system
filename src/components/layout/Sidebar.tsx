@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Link, useLocation } from "react-router-dom";
 import { 
   Home, 
   Users, 
@@ -12,7 +13,6 @@ import {
   Settings,
   FolderOpen
 } from "lucide-react";
-import { useState } from "react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
@@ -28,7 +28,7 @@ const navigation = [
 ];
 
 export const Sidebar = () => {
-  const [currentPath] = useState(window.location.pathname);
+  const location = useLocation();
 
   return (
     <div className="fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border">
@@ -49,7 +49,7 @@ export const Sidebar = () => {
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1">
           {navigation.map((item) => {
-            const isActive = currentPath === item.href;
+            const isActive = location.pathname === item.href;
             return (
               <Button
                 key={item.name}
@@ -60,10 +60,12 @@ export const Sidebar = () => {
                     ? "bg-primary text-primary-foreground hover:bg-primary/90" 
                     : "hover:bg-accent hover:text-accent-foreground"
                 )}
-                onClick={() => window.location.pathname = item.href}
+                asChild
               >
-                <item.icon className="w-4 h-4" />
-                {item.name}
+                <Link to={item.href}>
+                  <item.icon className="w-4 h-4" />
+                  {item.name}
+                </Link>
               </Button>
             );
           })}
