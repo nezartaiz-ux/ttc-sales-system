@@ -4,10 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Plus, Truck } from "lucide-react";
 import { AddSupplierModal } from "@/components/modals/AddSupplierModal";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useToast } from "@/hooks/use-toast";
 
 const Suppliers = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
+  const { isInventory } = useUserRole();
+  const { toast } = useToast();
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -18,7 +21,14 @@ const Suppliers = () => {
           </div>
           <Button 
             className="bg-accent hover:bg-accent/90"
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => {
+              if (!isInventory) {
+                toast({ title: 'Permission denied', description: 'Only inventory staff or admins can add suppliers.', variant: 'destructive' });
+                return;
+              }
+              setIsAddModalOpen(true);
+            }}
+            disabled={!isInventory}
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Supplier

@@ -1,12 +1,33 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, FolderOpen } from "lucide-react";
 import { AddCategoryModal } from "@/components/modals/AddCategoryModal";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const Categories = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [categories, setCategories] = useState<{ id: string; name: string; description: string | null; is_active: boolean; created_at: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const { isAdmin } = useUserRole();
+
+  const fetchCategories = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from('product_categories').select('*').order('created_at', { ascending: false });
+    if (error) {
+      toast({ title: 'Error', description: `Failed to load categories: ${error.message}`, variant: 'destructive' });
+    } else {
+      setCategories(data || []);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchCategories(); }, []);
 
   return (
     <DashboardLayout>
@@ -18,7 +39,14 @@ const Categories = () => {
           </div>
           <Button 
             className="bg-primary hover:bg-primary/90"
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => {
+              if (!isAdmin) {
+                toast({ title: 'Permission denied', description: 'Only admins can add categories.', variant: 'destructive' });
+                return;
+              }
+              setIsAddModalOpen(true);
+            }}
+            disabled={!isAdmin}
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Category
@@ -62,15 +90,41 @@ const Categories = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Category Management</CardTitle>
-            <CardDescription>Manage product categories and subcategories</CardDescription>
+            <CardTitle>Categories</CardTitle>
+            <CardDescription>All categories in the system</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              <FolderOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Category management features will be implemented here</p>
-              <p className="text-sm">Including hierarchical categories and product assignments</p>
-            </div>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading…</div>
+            ) : categories.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FolderOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No categories found</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {categories.map((c) => (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-medium">{c.name}</TableCell>
+                        <TableCell>{c.description || '-'}</TableCell>
+                        <TableCell>{c.is_active ? 'Active' : 'Inactive'}</TableCell>
+                        <TableCell>{new Date(c.created_at).toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -78,9 +132,7 @@ const Categories = () => {
       <AddCategoryModal
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
-        onSuccess={() => {
-          // Refresh category list here when we implement it
-        }}
+        onSuccess={fetchCategories}
       />
     </DashboardLayout>
   );
