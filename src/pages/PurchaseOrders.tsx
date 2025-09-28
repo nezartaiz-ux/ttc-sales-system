@@ -1,9 +1,17 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, ShoppingCart, Truck, Package } from "lucide-react";
+import { CreatePOModal } from "@/components/modals/CreatePOModal";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useToast } from "@/hooks/use-toast";
 
 const PurchaseOrders = () => {
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const { isInventory } = useUserRole();
+  const { toast } = useToast();
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -12,7 +20,17 @@ const PurchaseOrders = () => {
             <h1 className="text-3xl font-bold text-foreground">Purchase Orders</h1>
             <p className="text-muted-foreground">Manage procurement and supplier orders</p>
           </div>
-          <Button className="bg-accent hover:bg-accent/90">
+          <Button 
+            className="bg-accent hover:bg-accent/90"
+            onClick={() => {
+              if (!isInventory) {
+                toast({ title: 'Permission denied', description: 'Only inventory staff or admins can create purchase orders.', variant: 'destructive' });
+                return;
+              }
+              setIsCreateModalOpen(true);
+            }}
+            disabled={!isInventory}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Create PO
           </Button>
@@ -80,6 +98,14 @@ const PurchaseOrders = () => {
           </CardContent>
         </Card>
       </div>
+
+      <CreatePOModal
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        onSuccess={() => {
+          // TODO: refresh purchase orders when implemented
+        }}
+      />
     </DashboardLayout>
   );
 };

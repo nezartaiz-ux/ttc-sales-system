@@ -1,9 +1,107 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, BarChart3, TrendingUp, PieChart } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { exportToCSV } from "@/utils/csvExport";
 
 const Reports = () => {
+  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
+
+  const handleExportAll = async () => {
+    setIsExporting(true);
+    try {
+      const [customers, suppliers, inventory, quotations, pos, invoices] = await Promise.all([
+        supabase.from('customers').select('*'),
+        supabase.from('suppliers').select('*'),
+        supabase.from('inventory_items').select('*'),
+        supabase.from('quotations').select('*'),
+        supabase.from('purchase_orders').select('*'),
+        supabase.from('sales_invoices').select('*')
+      ]);
+
+      if (customers.data) exportToCSV(customers.data, `customers-${new Date().toISOString().split('T')[0]}.csv`);
+      if (suppliers.data) exportToCSV(suppliers.data, `suppliers-${new Date().toISOString().split('T')[0]}.csv`);
+      if (inventory.data) exportToCSV(inventory.data, `inventory-${new Date().toISOString().split('T')[0]}.csv`);
+      if (quotations.data) exportToCSV(quotations.data, `quotations-${new Date().toISOString().split('T')[0]}.csv`);
+      if (pos.data) exportToCSV(pos.data, `purchase-orders-${new Date().toISOString().split('T')[0]}.csv`);
+      if (invoices.data) exportToCSV(invoices.data, `sales-invoices-${new Date().toISOString().split('T')[0]}.csv`);
+
+      toast({ title: 'Success', description: 'All reports exported successfully' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to export reports', variant: 'destructive' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleSpecificReport = async (reportType: string) => {
+    try {
+      let data, filename;
+      const date = new Date().toISOString().split('T')[0];
+
+      switch (reportType) {
+        case 'monthly-sales':
+          const { data: salesData } = await supabase
+            .from('sales_invoices')
+            .select('invoice_number, customer_id, grand_total, created_at, status')
+            .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+          data = salesData;
+          filename = `monthly-sales-${date}.csv`;
+          break;
+        case 'customer-performance':
+          const { data: customerData } = await supabase
+            .from('customers')
+            .select('name, email, credit_limit, is_active, created_at');
+          data = customerData;
+          filename = `customer-performance-${date}.csv`;
+          break;
+        case 'category-analysis':
+          const { data: categoryData } = await supabase
+            .from('product_categories')
+            .select('name, description, is_active, created_at');
+          data = categoryData;
+          filename = `category-analysis-${date}.csv`;
+          break;
+        case 'stock-levels':
+          const { data: stockData } = await supabase
+            .from('inventory_items')
+            .select('name, quantity, min_stock_level, unit_price, selling_price, location');
+          data = stockData;
+          filename = `stock-levels-${date}.csv`;
+          break;
+        case 'supplier-performance':
+          const { data: supplierData } = await supabase
+            .from('suppliers')
+            .select('name, email, phone, contact_person, is_active, created_at');
+          data = supplierData;
+          filename = `supplier-performance-${date}.csv`;
+          break;
+        case 'po-analysis':
+          const { data: poData } = await supabase
+            .from('purchase_orders')
+            .select('order_number, supplier_id, grand_total, status, expected_delivery_date, created_at');
+          data = poData;
+          filename = `purchase-order-analysis-${date}.csv`;
+          break;
+        default:
+          throw new Error('Unknown report type');
+      }
+
+      if (data && data.length > 0) {
+        exportToCSV(data, filename);
+        toast({ title: 'Success', description: 'Report exported successfully' });
+      } else {
+        toast({ title: 'Info', description: 'No data available for this report' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to export report', variant: 'destructive' });
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -12,9 +110,13 @@ const Reports = () => {
             <h1 className="text-3xl font-bold text-foreground">Reports & Analytics</h1>
             <p className="text-muted-foreground">Business insights and performance metrics</p>
           </div>
-          <Button className="bg-primary hover:bg-primary/90">
+          <Button 
+            className="bg-primary hover:bg-primary/90"
+            onClick={handleExportAll}
+            disabled={isExporting}
+          >
             <Download className="h-4 w-4 mr-2" />
-            Export Reports
+            {isExporting ? 'Exporting...' : 'Export Reports'}
           </Button>
         </div>
 
@@ -63,15 +165,27 @@ const Reports = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => handleSpecificReport('monthly-sales')}
+                >
                   <BarChart3 className="h-4 w-4 mr-2" />
                   Monthly Sales Report
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => handleSpecificReport('customer-performance')}
+                >
                   <TrendingUp className="h-4 w-4 mr-2" />
                   Customer Performance Report
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => handleSpecificReport('category-analysis')}
+                >
                   <PieChart className="h-4 w-4 mr-2" />
                   Product Category Analysis
                 </Button>
@@ -86,15 +200,27 @@ const Reports = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => handleSpecificReport('stock-levels')}
+                >
                   <BarChart3 className="h-4 w-4 mr-2" />
                   Stock Level Report
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => handleSpecificReport('supplier-performance')}
+                >
                   <TrendingUp className="h-4 w-4 mr-2" />
                   Supplier Performance
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => handleSpecificReport('po-analysis')}
+                >
                   <PieChart className="h-4 w-4 mr-2" />
                   Purchase Order Analysis
                 </Button>

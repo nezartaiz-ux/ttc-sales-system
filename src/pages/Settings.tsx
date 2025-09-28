@@ -1,9 +1,17 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Settings as SettingsIcon, User, Shield, Database } from "lucide-react";
+import { UserManagementModal } from "@/components/modals/UserManagementModal";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useToast } from "@/hooks/use-toast";
 
 const Settings = () => {
+  const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
+  const { isAdmin } = useUserRole();
+  const { toast } = useToast();
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -57,15 +65,48 @@ const Settings = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => {
+                    if (!isAdmin) {
+                      toast({ title: 'Permission denied', description: 'Only admins can manage users.', variant: 'destructive' });
+                      return;
+                    }
+                    setIsUserManagementOpen(true);
+                  }}
+                  disabled={!isAdmin}
+                >
                   <User className="h-4 w-4 mr-2" />
                   User Accounts
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => {
+                    if (!isAdmin) {
+                      toast({ title: 'Permission denied', description: 'Only admins can manage roles.', variant: 'destructive' });
+                      return;
+                    }
+                    toast({ title: 'Info', description: 'Role management is available in User Accounts section.' });
+                  }}
+                  disabled={!isAdmin}
+                >
                   <Shield className="h-4 w-4 mr-2" />
                   Role Management
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => {
+                    if (!isAdmin) {
+                      toast({ title: 'Permission denied', description: 'Only admins can manage permissions.', variant: 'destructive' });
+                      return;
+                    }
+                    toast({ title: 'Info', description: 'Access permissions are managed through user roles.' });
+                  }}
+                  disabled={!isAdmin}
+                >
                   <SettingsIcon className="h-4 w-4 mr-2" />
                   Access Permissions
                 </Button>
@@ -111,6 +152,11 @@ const Settings = () => {
           </CardContent>
         </Card>
       </div>
+
+      <UserManagementModal
+        open={isUserManagementOpen}
+        onOpenChange={setIsUserManagementOpen}
+      />
     </DashboardLayout>
   );
 };

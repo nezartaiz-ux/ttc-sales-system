@@ -1,9 +1,17 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, FileText, Clock, CheckCircle } from "lucide-react";
+import { CreateQuotationModal } from "@/components/modals/CreateQuotationModal";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useToast } from "@/hooks/use-toast";
 
 const Quotations = () => {
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const { isSales } = useUserRole();
+  const { toast } = useToast();
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -12,7 +20,17 @@ const Quotations = () => {
             <h1 className="text-3xl font-bold text-foreground">Quotations</h1>
             <p className="text-muted-foreground">Manage sales quotations and proposals</p>
           </div>
-          <Button className="bg-primary hover:bg-primary/90">
+          <Button 
+            className="bg-primary hover:bg-primary/90"
+            onClick={() => {
+              if (!isSales) {
+                toast({ title: 'Permission denied', description: 'Only sales staff or admins can create quotations.', variant: 'destructive' });
+                return;
+              }
+              setIsCreateModalOpen(true);
+            }}
+            disabled={!isSales}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Create Quotation
           </Button>
@@ -80,6 +98,14 @@ const Quotations = () => {
           </CardContent>
         </Card>
       </div>
+
+      <CreateQuotationModal
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        onSuccess={() => {
+          // TODO: refresh quotations when implemented
+        }}
+      />
     </DashboardLayout>
   );
 };

@@ -1,9 +1,19 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Receipt, DollarSign, CreditCard } from "lucide-react";
+import { CreateInvoiceModal } from "@/components/modals/CreateInvoiceModal";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useToast } from "@/hooks/use-toast";
 
 const SalesInvoices = () => {
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const { isSales, isAccountant } = useUserRole();
+  const { toast } = useToast();
+
+  const canCreateInvoice = isSales || isAccountant;
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -12,7 +22,17 @@ const SalesInvoices = () => {
             <h1 className="text-3xl font-bold text-foreground">Sales Invoices</h1>
             <p className="text-muted-foreground">Manage billing and payments</p>
           </div>
-          <Button className="bg-primary hover:bg-primary/90">
+          <Button 
+            className="bg-primary hover:bg-primary/90"
+            onClick={() => {
+              if (!canCreateInvoice) {
+                toast({ title: 'Permission denied', description: 'Only sales staff, accountants or admins can create invoices.', variant: 'destructive' });
+                return;
+              }
+              setIsCreateModalOpen(true);
+            }}
+            disabled={!canCreateInvoice}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Create Invoice
           </Button>
@@ -82,6 +102,14 @@ const SalesInvoices = () => {
           </CardContent>
         </Card>
       </div>
+
+      <CreateInvoiceModal
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        onSuccess={() => {
+          // TODO: refresh invoices when implemented
+        }}
+      />
     </DashboardLayout>
   );
 };
