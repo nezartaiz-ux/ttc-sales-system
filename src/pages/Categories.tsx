@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, FolderOpen } from "lucide-react";
+import { AddCategoryModal } from "@/components/modals/AddCategoryModal";
 
 const Categories = () => {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -12,7 +16,10 @@ const Categories = () => {
             <h1 className="text-3xl font-bold text-foreground">Product Categories</h1>
             <p className="text-muted-foreground">Organize your product catalog</p>
           </div>
-          <Button className="bg-primary hover:bg-primary/90">
+          <Button 
+            className="bg-primary hover:bg-primary/90"
+            onClick={() => setIsAddModalOpen(true)}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Category
           </Button>
@@ -67,6 +74,14 @@ const Categories = () => {
           </CardContent>
         </Card>
       </div>
+
+      <AddCategoryModal
+        open={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+        onSuccess={() => {
+          // Refresh category list here when we implement it
+        }}
+      />
     </DashboardLayout>
   );
 };

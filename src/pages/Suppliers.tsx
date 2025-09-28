@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Truck } from "lucide-react";
+import { AddSupplierModal } from "@/components/modals/AddSupplierModal";
 
 const Suppliers = () => {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -12,7 +16,10 @@ const Suppliers = () => {
             <h1 className="text-3xl font-bold text-foreground">Suppliers</h1>
             <p className="text-muted-foreground">Manage your supplier network</p>
           </div>
-          <Button className="bg-accent hover:bg-accent/90">
+          <Button 
+            className="bg-accent hover:bg-accent/90"
+            onClick={() => setIsAddModalOpen(true)}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Supplier
           </Button>
@@ -69,6 +76,14 @@ const Suppliers = () => {
           </CardContent>
         </Card>
       </div>
+
+      <AddSupplierModal
+        open={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+        onSuccess={() => {
+          // Refresh supplier list here when we implement it
+        }}
+      />
     </DashboardLayout>
   );
 };
