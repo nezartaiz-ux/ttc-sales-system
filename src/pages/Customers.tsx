@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Users } from "lucide-react";
+import { AddCustomerModal } from "@/components/modals/AddCustomerModal";
 
 const Customers = () => {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -12,7 +16,10 @@ const Customers = () => {
             <h1 className="text-3xl font-bold text-foreground">Customers</h1>
             <p className="text-muted-foreground">Manage your customer database</p>
           </div>
-          <Button className="bg-primary hover:bg-primary/90">
+          <Button 
+            className="bg-primary hover:bg-primary/90"
+            onClick={() => setIsAddModalOpen(true)}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Customer
           </Button>
@@ -69,6 +76,14 @@ const Customers = () => {
           </CardContent>
         </Card>
       </div>
+
+      <AddCustomerModal
+        open={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+        onSuccess={() => {
+          // Refresh customer list here when we implement it
+        }}
+      />
     </DashboardLayout>
   );
 };
