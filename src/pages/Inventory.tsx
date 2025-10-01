@@ -1,16 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Package, AlertTriangle, TrendingUp } from "lucide-react";
 import { AddItemModal } from "@/components/modals/AddItemModal";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
+import { supabase } from "@/integrations/supabase/client";
 
 const Inventory = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { isInventory } = useUserRole();
   const { toast } = useToast();
+
+  const fetchItems = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select('*, product_categories(name), suppliers(name)')
+      .order('created_at', { ascending: false });
+    if (error) {
+      toast({ title: 'Error', description: `Failed to load inventory: ${error.message}`, variant: 'destructive' });
+    } else {
+      setItems(data || []);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
   
   return (
     <DashboardLayout>
@@ -134,15 +156,54 @@ const Inventory = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Recent Stock Movements</CardTitle>
-              <CardDescription>Latest inventory updates</CardDescription>
+              <CardTitle>Inventory Items</CardTitle>
+              <CardDescription>All items in stock</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Stock movement tracking will be implemented here</p>
-                <p className="text-sm">Including in/out movements and transfers</p>
-              </div>
+              {loading ? (
+                <div className="text-center py-8 text-muted-foreground">Loading inventory...</div>
+              ) : items.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No inventory items found</p>
+                  <p className="text-sm">Add your first item using the button above</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>SKU</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Supplier</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Unit Price</TableHead>
+                        <TableHead>Selling Price</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {items.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell>{item.sku || '-'}</TableCell>
+                          <TableCell>{item.product_categories?.name || '-'}</TableCell>
+                          <TableCell>{item.suppliers?.name || '-'}</TableCell>
+                          <TableCell>{item.quantity}</TableCell>
+                          <TableCell>${item.unit_price}</TableCell>
+                          <TableCell>${item.selling_price}</TableCell>
+                          <TableCell>
+                            <span className={item.is_active ? "text-green-600" : "text-red-600"}>
+                              {item.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -151,9 +212,7 @@ const Inventory = () => {
       <AddItemModal
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
-        onSuccess={() => {
-          // TODO: refresh inventory when implemented
-        }}
+        onSuccess={fetchItems}
       />
     </DashboardLayout>
   );

@@ -1,16 +1,83 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText, Clock, CheckCircle } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Plus, FileText, Clock, CheckCircle, Eye, Download, Printer } from "lucide-react";
 import { CreateQuotationModal } from "@/components/modals/CreateQuotationModal";
+import { ViewQuotationModal } from "@/components/modals/ViewQuotationModal";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { generateQuotationPDF, printQuotation } from "@/utils/pdfExport";
 
 const Quotations = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
+  const [quotations, setQuotations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { isSales } = useUserRole();
   const { toast } = useToast();
+
+  const fetchQuotations = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('quotations')
+      .select('*, customers(name), quotation_items(*, inventory_items(name))')
+      .order('created_at', { ascending: false });
+    if (error) {
+      toast({ title: 'Error', description: `Failed to load quotations: ${error.message}`, variant: 'destructive' });
+    } else {
+      setQuotations(data || []);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchQuotations();
+  }, []);
+
+  const handleView = (quotation: any) => {
+    setSelectedQuotation(quotation);
+    setIsViewModalOpen(true);
+  };
+
+  const handleDownloadPDF = (quotation: any) => {
+    generateQuotationPDF({
+      quotation_number: quotation.quotation_number,
+      customer_name: quotation.customers?.name || 'N/A',
+      validity_period: quotation.validity_period || 'N/A',
+      total_amount: quotation.total_amount || 0,
+      tax_amount: quotation.tax_amount || 0,
+      grand_total: quotation.grand_total || 0,
+      items: quotation.quotation_items?.map((item: any) => ({
+        name: item.inventory_items?.name || 'N/A',
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_price: item.total_price
+      })) || [],
+      notes: quotation.notes
+    });
+  };
+
+  const handlePrint = (quotation: any) => {
+    printQuotation({
+      quotation_number: quotation.quotation_number,
+      customer_name: quotation.customers?.name || 'N/A',
+      validity_period: quotation.validity_period || 'N/A',
+      total_amount: quotation.total_amount || 0,
+      tax_amount: quotation.tax_amount || 0,
+      grand_total: quotation.grand_total || 0,
+      items: quotation.quotation_items?.map((item: any) => ({
+        name: item.inventory_items?.name || 'N/A',
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_price: item.total_price
+      })) || [],
+      notes: quotation.notes
+    });
+  };
 
   return (
     <DashboardLayout>
@@ -87,14 +154,67 @@ const Quotations = () => {
         <Card>
           <CardHeader>
             <CardTitle>Quotation Management</CardTitle>
-            <CardDescription>Create, edit, and track quotations</CardDescription>
+            <CardDescription>All quotations in the system</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Quotation management features will be implemented here</p>
-              <p className="text-sm">Including quotation creation, approval workflow, and conversion to invoices</p>
-            </div>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading quotations...</div>
+            ) : quotations.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No quotations found</p>
+                <p className="text-sm">Create your first quotation using the button above</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Quotation #</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Valid Until</TableHead>
+                      <TableHead>Grand Total</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {quotations.map((quotation) => (
+                      <TableRow key={quotation.id}>
+                        <TableCell className="font-medium">{quotation.quotation_number}</TableCell>
+                        <TableCell>{quotation.customers?.name || 'N/A'}</TableCell>
+                        <TableCell>{quotation.validity_period || 'N/A'}</TableCell>
+                        <TableCell>${quotation.grand_total}</TableCell>
+                        <TableCell>
+                          <span className={`capitalize ${
+                            quotation.status === 'accepted' ? 'text-green-600' : 
+                            quotation.status === 'pending' ? 'text-yellow-600' : 
+                            'text-muted-foreground'
+                          }`}>
+                            {quotation.status}
+                          </span>
+                        </TableCell>
+                        <TableCell>{new Date(quotation.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleView(quotation)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleDownloadPDF(quotation)}>
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handlePrint(quotation)}>
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -102,9 +222,12 @@ const Quotations = () => {
       <CreateQuotationModal
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
-        onSuccess={() => {
-          // TODO: refresh quotations when implemented
-        }}
+        onSuccess={fetchQuotations}
+      />
+      <ViewQuotationModal
+        open={isViewModalOpen}
+        onOpenChange={setIsViewModalOpen}
+        quotation={selectedQuotation}
       />
     </DashboardLayout>
   );

@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -10,8 +12,17 @@ import {
   DollarSign,
   Truck
 } from "lucide-react";
+import { CreateQuotationModal } from "@/components/modals/CreateQuotationModal";
+import { CreatePOModal } from "@/components/modals/CreatePOModal";
+import { AddItemModal } from "@/components/modals/AddItemModal";
+import { AddCustomerModal } from "@/components/modals/AddCustomerModal";
 
 export const DashboardHome = () => {
+  const navigate = useNavigate();
+  const [isQuotationModalOpen, setIsQuotationModalOpen] = useState(false);
+  const [isPOModalOpen, setIsPOModalOpen] = useState(false);
+  const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
@@ -89,7 +100,10 @@ export const DashboardHome = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Card className="p-4 cursor-pointer hover:bg-accent/10 transition-colors border-primary/20">
+              <Card 
+                className="p-4 cursor-pointer hover:bg-accent/10 transition-colors border-primary/20"
+                onClick={() => setIsQuotationModalOpen(true)}
+              >
                 <div className="flex items-center gap-3">
                   <FileText className="h-8 w-8 text-primary" />
                   <div>
@@ -99,7 +113,10 @@ export const DashboardHome = () => {
                 </div>
               </Card>
               
-              <Card className="p-4 cursor-pointer hover:bg-accent/10 transition-colors border-accent/20">
+              <Card 
+                className="p-4 cursor-pointer hover:bg-accent/10 transition-colors border-accent/20"
+                onClick={() => setIsPOModalOpen(true)}
+              >
                 <div className="flex items-center gap-3">
                   <ShoppingCart className="h-8 w-8 text-accent" />
                   <div>
@@ -109,7 +126,10 @@ export const DashboardHome = () => {
                 </div>
               </Card>
               
-              <Card className="p-4 cursor-pointer hover:bg-primary/10 transition-colors border-primary/20">
+              <Card 
+                className="p-4 cursor-pointer hover:bg-primary/10 transition-colors border-primary/20"
+                onClick={() => setIsInventoryModalOpen(true)}
+              >
                 <div className="flex items-center gap-3">
                   <Package className="h-8 w-8 text-primary" />
                   <div>
@@ -119,7 +139,10 @@ export const DashboardHome = () => {
                 </div>
               </Card>
               
-              <Card className="p-4 cursor-pointer hover:bg-accent/10 transition-colors border-accent/20">
+              <Card 
+                className="p-4 cursor-pointer hover:bg-accent/10 transition-colors border-accent/20"
+                onClick={() => setIsCustomerModalOpen(true)}
+              >
                 <div className="flex items-center gap-3">
                   <Users className="h-8 w-8 text-accent" />
                   <div>
@@ -182,6 +205,27 @@ export const DashboardHome = () => {
           </CardContent>
         </Card>
       </div>
+
+      <CreateQuotationModal
+        open={isQuotationModalOpen}
+        onOpenChange={setIsQuotationModalOpen}
+        onSuccess={() => navigate('/quotations')}
+      />
+      <CreatePOModal
+        open={isPOModalOpen}
+        onOpenChange={setIsPOModalOpen}
+        onSuccess={() => navigate('/purchase-orders')}
+      />
+      <AddItemModal
+        open={isInventoryModalOpen}
+        onOpenChange={setIsInventoryModalOpen}
+        onSuccess={() => navigate('/inventory')}
+      />
+      <AddCustomerModal
+        open={isCustomerModalOpen}
+        onOpenChange={setIsCustomerModalOpen}
+        onSuccess={() => navigate('/customers')}
+      />
     </div>
   );
 };

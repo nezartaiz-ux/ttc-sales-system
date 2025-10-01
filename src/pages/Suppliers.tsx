@@ -1,16 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Truck } from "lucide-react";
 import { AddSupplierModal } from "@/components/modals/AddSupplierModal";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Suppliers = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { isInventory } = useUserRole();
   const { toast } = useToast();
+
+  const fetchSuppliers = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('suppliers')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      toast({ title: 'Error', description: `Failed to load suppliers: ${error.message}`, variant: 'destructive' });
+    } else {
+      setSuppliers(data || []);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchSuppliers();
+  }, []);
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -78,11 +100,46 @@ const Suppliers = () => {
             <CardDescription>All registered suppliers in the system</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              <Truck className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Supplier management features will be implemented here</p>
-              <p className="text-sm">Including add, edit, delete, and search functionality</p>
-            </div>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading suppliers...</div>
+            ) : suppliers.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Truck className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No suppliers found</p>
+                <p className="text-sm">Add your first supplier using the button above</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Contact Person</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Address</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {suppliers.map((supplier) => (
+                      <TableRow key={supplier.id}>
+                        <TableCell className="font-medium">{supplier.name}</TableCell>
+                        <TableCell>{supplier.contact_person || '-'}</TableCell>
+                        <TableCell>{supplier.email || '-'}</TableCell>
+                        <TableCell>{supplier.phone || '-'}</TableCell>
+                        <TableCell>{supplier.address || '-'}</TableCell>
+                        <TableCell>
+                          <span className={supplier.is_active ? "text-green-600" : "text-red-600"}>
+                            {supplier.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -90,9 +147,7 @@ const Suppliers = () => {
       <AddSupplierModal
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
-        onSuccess={() => {
-          // Refresh supplier list here when we implement it
-        }}
+        onSuccess={fetchSuppliers}
       />
     </DashboardLayout>
   );

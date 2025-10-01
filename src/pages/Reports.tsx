@@ -2,13 +2,20 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, BarChart3, TrendingUp, PieChart } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Download, BarChart3, TrendingUp, PieChart, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { exportToCSV } from "@/utils/csvExport";
+import { generateReportPDF } from "@/utils/reportPdfExport";
 
 const Reports = () => {
   const [isExporting, setIsExporting] = useState(false);
+  const [customReportType, setCustomReportType] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const { toast } = useToast();
 
   const handleExportAll = async () => {
@@ -100,6 +107,50 @@ const Reports = () => {
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to export report', variant: 'destructive' });
     }
+  };
+
+  const handleGenerateCustomReportPDF = async () => {
+    if (!customReportType) return;
+    setIsExporting(true);
+    try {
+      const tableName = customReportType === 'sales' ? 'sales_invoices' as const : 
+                        customReportType === 'purchase-orders' ? 'purchase_orders' as const :
+                        customReportType as any;
+      const { data } = await supabase.from(tableName).select('*');
+      
+      if (data && data.length > 0) {
+        const headers = Object.keys(data[0]);
+        const rows = data.map(row => headers.map(h => String((row as any)[h] || '')));
+        generateReportPDF({
+          title: `${customReportType.toUpperCase()} Report`,
+          dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
+          headers,
+          rows
+        });
+        toast({ title: 'Success', description: 'PDF report generated' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to generate PDF', variant: 'destructive' });
+    }
+    setIsExporting(false);
+  };
+
+  const handleGenerateCustomReportCSV = async () => {
+    if (!customReportType) return;
+    setIsExporting(true);
+    try {
+      const tableName = customReportType === 'sales' ? 'sales_invoices' as const : 
+                        customReportType === 'purchase-orders' ? 'purchase_orders' as const :
+                        customReportType as any;
+      const { data } = await supabase.from(tableName).select('*');
+      if (data) {
+        exportToCSV(data, `${customReportType}-${new Date().toISOString().split('T')[0]}.csv`);
+        toast({ title: 'Success', description: 'CSV exported' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to export CSV', variant: 'destructive' });
+    }
+    setIsExporting(false);
   };
 
   return (
@@ -232,13 +283,65 @@ const Reports = () => {
         <Card>
           <CardHeader>
             <CardTitle>Custom Reports</CardTitle>
-            <CardDescription>Generate custom reports based on your requirements</CardDescription>
+            <CardDescription>Generate custom reports with date range filters</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Advanced reporting features will be implemented here</p>
-              <p className="text-sm">Including custom report builder and scheduled reports</p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="report-type">Report Type</Label>
+                  <Select value={customReportType} onValueChange={setCustomReportType}>
+                    <SelectTrigger id="report-type">
+                      <SelectValue placeholder="Select report type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sales">Sales Report</SelectItem>
+                      <SelectItem value="inventory">Inventory Report</SelectItem>
+                      <SelectItem value="purchase-orders">Purchase Orders Report</SelectItem>
+                      <SelectItem value="quotations">Quotations Report</SelectItem>
+                      <SelectItem value="customers">Customer Report</SelectItem>
+                      <SelectItem value="suppliers">Supplier Report</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="start-date">Start Date</Label>
+                  <Input 
+                    id="start-date" 
+                    type="date" 
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="end-date">End Date</Label>
+                  <Input 
+                    id="end-date" 
+                    type="date" 
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleGenerateCustomReportPDF}
+                  disabled={!customReportType || isExporting}
+                  className="flex-1"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate PDF Report
+                </Button>
+                <Button 
+                  onClick={handleGenerateCustomReportCSV}
+                  disabled={!customReportType || isExporting}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export to CSV
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
