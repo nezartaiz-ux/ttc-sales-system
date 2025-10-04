@@ -11,7 +11,7 @@ const COMPANY_INFO = {
 };
 
 // Helper function to add header with logo and company info
-const addPDFHeader = async (doc: jsPDF, isCat: boolean = true) => {
+const addPDFHeader = (doc: jsPDF, isCat: boolean = true) => {
   // Company info on top-left
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
@@ -64,11 +64,11 @@ interface POData {
   notes?: string;
 }
 
-export const generateQuotationPDF = async (data: QuotationData) => {
+export const generateQuotationPDF = (data: QuotationData) => {
   const doc = new jsPDF();
   
   // Add header with logo and company info
-  await addPDFHeader(doc, true);
+  addPDFHeader(doc, true);
   
   // Document title
   doc.setFontSize(20);
@@ -110,11 +110,11 @@ export const generateQuotationPDF = async (data: QuotationData) => {
   doc.save(`quotation-${data.quotation_number}.pdf`);
 };
 
-export const generatePOPDF = async (data: POData) => {
+export const generatePOPDF = (data: POData) => {
   const doc = new jsPDF();
   
   // Add header with logo and company info
-  await addPDFHeader(doc, true);
+  addPDFHeader(doc, true);
   
   // Document title
   doc.setFontSize(20);

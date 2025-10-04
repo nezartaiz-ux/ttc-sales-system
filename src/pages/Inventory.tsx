@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Package, AlertTriangle, TrendingUp } from "lucide-react";
+import { Plus, Package, AlertTriangle, Pencil } from "lucide-react";
 import { AddItemModal } from "@/components/modals/AddItemModal";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Inventory = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { isInventory } = useUserRole();
@@ -181,6 +182,7 @@ const Inventory = () => {
                         <TableHead>Unit Price</TableHead>
                         <TableHead>Selling Price</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -198,6 +200,22 @@ const Inventory = () => {
                               {item.is_active ? 'Active' : 'Inactive'}
                             </span>
                           </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (!isInventory) {
+                                  toast({ title: 'Permission denied', description: 'Only inventory staff or admins can edit items.', variant: 'destructive' });
+                                  return;
+                                }
+                                setEditingItem(item);
+                              }}
+                              disabled={!isInventory}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -213,6 +231,13 @@ const Inventory = () => {
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
         onSuccess={fetchItems}
+      />
+      
+      <AddItemModal
+        open={!!editingItem}
+        onOpenChange={(open) => !open && setEditingItem(null)}
+        onSuccess={fetchItems}
+        editItem={editingItem}
       />
     </DashboardLayout>
   );

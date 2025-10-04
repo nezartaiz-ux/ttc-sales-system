@@ -30,9 +30,11 @@ interface AddItemModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  editItem?: any;
 }
 
-export const AddItemModal = ({ open, onOpenChange, onSuccess }: AddItemModalProps) => {
+export const AddItemModal = ({ open, onOpenChange, onSuccess, editItem }: AddItemModalProps) => {
+  const isEditing = !!editItem;
   const [formData, setFormData] = useState({
     name: '',
     category_id: '',
@@ -62,8 +64,32 @@ export const AddItemModal = ({ open, onOpenChange, onSuccess }: AddItemModalProp
       setCategories((cats || []) as Option[]);
       setSuppliers((sups || []) as Option[]);
     };
-    if (open) loadOptions();
-  }, [open]);
+    if (open) {
+      loadOptions();
+      // Pre-fill form if editing
+      if (editItem) {
+        setFormData({
+          name: editItem.name || '',
+          category_id: editItem.category_id || '',
+          quantity: editItem.quantity || 0,
+          unit_price: editItem.unit_price || 0,
+          selling_price: editItem.selling_price || 0,
+          min_stock_level: editItem.min_stock_level || 0,
+          sku: editItem.sku || '',
+          location: editItem.location || '',
+          batch_number: editItem.batch_number || '',
+          supplier_id: editItem.supplier_id || '',
+          description: editItem.description || '',
+        });
+      } else {
+        // Reset form for new item
+        setFormData({
+          name: '', category_id: '', quantity: 0, unit_price: 0, selling_price: 0,
+          min_stock_level: 0, sku: '', location: '', batch_number: '', supplier_id: '', description: ''
+        });
+      }
+    }
+  }, [open, editItem]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,14 +125,19 @@ export const AddItemModal = ({ open, onOpenChange, onSuccess }: AddItemModalProp
         batch_number: formData.batch_number.trim() || null,
         supplier_id: formData.supplier_id || null,
         description: formData.description.trim() || null,
-        created_by: user.id,
       };
 
-      const { error } = await supabase.from('inventory_items').insert([payload]);
-      if (error) {
-        toast({ title: 'Error', description: `Failed to add item: ${error.message}`, variant: 'destructive' });
+      let error;
+      if (isEditing) {
+        ({ error } = await supabase.from('inventory_items').update(payload).eq('id', editItem.id));
       } else {
-        toast({ title: 'Success', description: 'Item added successfully' });
+        ({ error } = await supabase.from('inventory_items').insert([{ ...payload, created_by: user.id }]));
+      }
+
+      if (error) {
+        toast({ title: 'Error', description: `Failed to ${isEditing ? 'update' : 'add'} item: ${error.message}`, variant: 'destructive' });
+      } else {
+        toast({ title: 'Success', description: `Item ${isEditing ? 'updated' : 'added'} successfully` });
         onOpenChange(false);
         onSuccess?.();
         setFormData({
@@ -130,8 +161,10 @@ export const AddItemModal = ({ open, onOpenChange, onSuccess }: AddItemModalProp
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Add New Item</DialogTitle>
-          <DialogDescription>Enter item details to add to inventory.</DialogDescription>
+          <DialogTitle>{isEditing ? 'Edit Item' : 'Add New Item'}</DialogTitle>
+          <DialogDescription>
+            {isEditing ? 'Update item details.' : 'Enter item details to add to inventory.'}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -212,7 +245,9 @@ export const AddItemModal = ({ open, onOpenChange, onSuccess }: AddItemModalProp
 
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={isLoading} className="flex-1">{isLoading ? 'Adding…' : 'Add Item'}</Button>
+            <Button type="submit" disabled={isLoading} className="flex-1">
+              {isLoading ? (isEditing ? 'Updating…' : 'Adding…') : (isEditing ? 'Update Item' : 'Add Item')}
+            </Button>
           </div>
         </form>
       </DialogContent>

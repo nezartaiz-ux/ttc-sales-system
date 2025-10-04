@@ -10,7 +10,7 @@ const COMPANY_INFO = {
 };
 
 // Helper function to add header with logo and company info
-const addReportHeader = async (doc: jsPDF) => {
+const addReportHeader = (doc: jsPDF) => {
   // Company info on top-left
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
@@ -30,7 +30,7 @@ const addReportHeader = async (doc: jsPDF) => {
   return 35; // Return Y position where content should start
 };
 
-export const generateReportPDF = async (reportData: {
+export const generateReportPDF = (reportData: {
   title: string;
   dateRange?: string;
   headers: string[];
@@ -40,7 +40,7 @@ export const generateReportPDF = async (reportData: {
   const doc = new jsPDF();
   
   // Add header with logo and company info
-  await addReportHeader(doc);
+  addReportHeader(doc);
   
   // Title
   doc.setFontSize(18);
