@@ -1,7 +1,36 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import tehamaLogo from '@/assets/tehama-logo.png';
 
-export const generateReportPDF = (reportData: {
+// Company information
+const COMPANY_INFO = {
+  name: "CAT Company",
+  address: "Sana'a Branch",
+  city: "Sana'a, Yemen"
+};
+
+// Helper function to add header with logo and company info
+const addReportHeader = async (doc: jsPDF) => {
+  // Company info on top-left
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(COMPANY_INFO.name, 14, 15);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(COMPANY_INFO.address, 14, 21);
+  doc.text(COMPANY_INFO.city, 14, 26);
+  
+  // Logo on top-right
+  try {
+    doc.addImage(tehamaLogo, 'PNG', 160, 10, 35, 20);
+  } catch (e) {
+    console.error('Error adding logo to PDF:', e);
+  }
+  
+  return 35; // Return Y position where content should start
+};
+
+export const generateReportPDF = async (reportData: {
   title: string;
   dateRange?: string;
   headers: string[];
@@ -10,19 +39,24 @@ export const generateReportPDF = (reportData: {
 }) => {
   const doc = new jsPDF();
   
+  // Add header with logo and company info
+  await addReportHeader(doc);
+  
   // Title
   doc.setFontSize(18);
-  doc.text(reportData.title, 14, 20);
+  doc.setFont('helvetica', 'bold');
+  doc.text(reportData.title, 14, 45);
   
   // Date range if provided
   if (reportData.dateRange) {
     doc.setFontSize(10);
-    doc.text(reportData.dateRange, 14, 28);
+    doc.setFont('helvetica', 'normal');
+    doc.text(reportData.dateRange, 14, 53);
   }
   
   // Main table
   autoTable(doc, {
-    startY: reportData.dateRange ? 35 : 28,
+    startY: reportData.dateRange ? 60 : 53,
     head: [reportData.headers],
     body: reportData.rows,
     styles: { fontSize: 8 },
@@ -31,10 +65,12 @@ export const generateReportPDF = (reportData: {
   
   // Summary section if provided
   if (reportData.summary && reportData.summary.length > 0) {
-    const finalY = (doc as any).lastAutoTable.finalY || 35;
+    const finalY = (doc as any).lastAutoTable.finalY || 60;
     doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
     doc.text('Summary', 14, finalY + 10);
     doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
     reportData.summary.forEach((item, index) => {
       doc.text(`${item.label}: ${item.value}`, 14, finalY + 18 + (index * 7));
     });
