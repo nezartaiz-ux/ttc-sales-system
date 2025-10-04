@@ -19,6 +19,8 @@ const invoiceSchema = z.object({
   invoice_type: z.enum(['cash', 'credit']),
   payment_terms: z.coerce.number().min(1).optional(),
   due_date: z.string().optional().or(z.literal('')),
+  customs_duty_status: z.enum(['CIF','DDP']).optional().or(z.literal('')),
+  conditions: z.string().max(1000).optional().or(z.literal('')),
   notes: z.string().max(1000).optional().or(z.literal(''))
 });
 
@@ -43,6 +45,8 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
     invoice_type: 'cash' as 'cash' | 'credit',
     payment_terms: 30,
     due_date: '',
+    customs_duty_status: '',
+    conditions: '',
     notes: ''
   });
   const [items, setItems] = useState<InvoiceItem[]>([]);
@@ -156,6 +160,8 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
         tax_amount,
         grand_total,
         notes: formData.notes.trim() || null,
+        customs_duty_status: formData.customs_duty_status || null,
+        conditions: formData.conditions.trim() || null,
         created_by: user.id
       };
 
@@ -189,7 +195,7 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
       // Reset form
       setFormData({
         customer_id: '', quotation_id: '', invoice_type: 'cash',
-        payment_terms: 30, due_date: '', notes: ''
+        payment_terms: 30, due_date: '', customs_duty_status: '', conditions: '', notes: ''
       });
       setItems([]);
 
@@ -278,6 +284,31 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
                 </div>
               </>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Customs & Duty Status</Label>
+              <Select value={formData.customs_duty_status} onValueChange={(v) => setFormData(p => ({ ...p, customs_duty_status: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select CIF or DDP" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CIF">CIF</SelectItem>
+                  <SelectItem value="DDP">DDP</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="conditions">Conditions</Label>
+              <Textarea
+                id="conditions"
+                rows={3}
+                value={formData.conditions}
+                onChange={(e) => setFormData(p => ({ ...p, conditions: e.target.value }))}
+                placeholder="Payment and contract conditions"
+              />
+            </div>
           </div>
 
           <Card>

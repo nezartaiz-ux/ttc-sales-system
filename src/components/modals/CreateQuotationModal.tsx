@@ -16,6 +16,11 @@ import { z } from 'zod';
 const quotationSchema = z.object({
   customer_id: z.string().uuid('Select a valid customer'),
   validity_period: z.string().min(1, 'Validity period is required'),
+  payment_terms: z.string().max(200).optional().or(z.literal('')),
+  customs_duty_status: z.enum(['CIF','DDP']).optional().or(z.literal('')),
+  conditions: z.string().max(1000).optional().or(z.literal('')),
+  delivery_terms: z.string().max(300).optional().or(z.literal('')),
+  delivery_details: z.string().max(1000).optional().or(z.literal('')),
   notes: z.string().max(1000).optional().or(z.literal(''))
 });
 
@@ -37,6 +42,11 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
   const [formData, setFormData] = useState({
     customer_id: '',
     validity_period: '',
+    payment_terms: '',
+    customs_duty_status: '',
+    conditions: '',
+    delivery_terms: '',
+    delivery_details: '',
     notes: ''
   });
   const [items, setItems] = useState<QuotationItem[]>([]);
@@ -143,6 +153,11 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
         tax_amount,
         grand_total,
         validity_period: formData.validity_period,
+        payment_terms: formData.payment_terms.trim() || null,
+        customs_duty_status: formData.customs_duty_status || null,
+        conditions: formData.conditions.trim() || null,
+        delivery_terms: formData.delivery_terms.trim() || null,
+        delivery_details: formData.delivery_details.trim() || null,
         notes: formData.notes.trim() || null,
         created_by: user.id
       };
@@ -175,7 +190,7 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
       onSuccess?.();
 
       // Reset form
-      setFormData({ customer_id: '', validity_period: '', notes: '' });
+      setFormData({ customer_id: '', validity_period: '', payment_terms: '', customs_duty_status: '', conditions: '', delivery_terms: '', delivery_details: '', notes: '' });
       setItems([]);
 
     } catch (error: any) {
@@ -222,6 +237,59 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
                 className={errors.validity_period ? 'border-destructive' : ''}
               />
               {errors.validity_period && <p className="text-sm text-destructive">{errors.validity_period}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="payment_terms">Payment Terms</Label>
+              <Input
+                id="payment_terms"
+                value={formData.payment_terms}
+                onChange={(e) => setFormData(p => ({ ...p, payment_terms: e.target.value }))}
+                placeholder="e.g., 50% advance, 50% on delivery"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Customs & Duty Status</Label>
+              <Select value={formData.customs_duty_status} onValueChange={(v) => setFormData(p => ({ ...p, customs_duty_status: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select CIF or DDP" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CIF">CIF</SelectItem>
+                  <SelectItem value="DDP">DDP</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="conditions">Conditions</Label>
+              <Textarea
+                id="conditions"
+                rows={3}
+                value={formData.conditions}
+                onChange={(e) => setFormData(p => ({ ...p, conditions: e.target.value }))}
+                placeholder="General conditions, warranty, payment instructions"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="delivery_terms">Delivery Terms</Label>
+              <Input
+                id="delivery_terms"
+                value={formData.delivery_terms}
+                onChange={(e) => setFormData(p => ({ ...p, delivery_terms: e.target.value }))}
+                placeholder="e.g., Delivered within 30 days"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="delivery_details">Delivery Details</Label>
+              <Textarea
+                id="delivery_details"
+                rows={3}
+                value={formData.delivery_details}
+                onChange={(e) => setFormData(p => ({ ...p, delivery_details: e.target.value }))}
+                placeholder="Location, contact person, unloading requirements"
+              />
             </div>
           </div>
 

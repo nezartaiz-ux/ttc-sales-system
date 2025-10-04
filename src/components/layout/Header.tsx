@@ -29,7 +29,7 @@ export const Header = () => {
             className="h-8 object-contain"
           />
           <div className="hidden sm:block">
-            <h1 className="text-lg font-semibold text-foreground">Trade Flow System</h1>
+            <h1 className="text-lg font-semibold text-foreground">Tehama Trading - Trade Flow</h1>
             <p className="text-xs text-muted-foreground">CAT & Massey Ferguson Dealer</p>
           </div>
         </div>
