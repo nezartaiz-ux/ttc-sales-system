@@ -333,12 +333,17 @@ export type Database = {
       }
       quotations: {
         Row: {
+          conditions: string | null
           created_at: string
           created_by: string
           customer_id: string
+          customs_duty_status: string | null
+          delivery_details: string | null
+          delivery_terms: string | null
           grand_total: number
           id: string
           notes: string | null
+          payment_terms: string | null
           quotation_number: string
           status: Database["public"]["Enums"]["quotation_status"]
           tax_amount: number
@@ -347,12 +352,17 @@ export type Database = {
           validity_period: string | null
         }
         Insert: {
+          conditions?: string | null
           created_at?: string
           created_by: string
           customer_id: string
+          customs_duty_status?: string | null
+          delivery_details?: string | null
+          delivery_terms?: string | null
           grand_total?: number
           id?: string
           notes?: string | null
+          payment_terms?: string | null
           quotation_number: string
           status?: Database["public"]["Enums"]["quotation_status"]
           tax_amount?: number
@@ -361,12 +371,17 @@ export type Database = {
           validity_period?: string | null
         }
         Update: {
+          conditions?: string | null
           created_at?: string
           created_by?: string
           customer_id?: string
+          customs_duty_status?: string | null
+          delivery_details?: string | null
+          delivery_terms?: string | null
           grand_total?: number
           id?: string
           notes?: string | null
+          payment_terms?: string | null
           quotation_number?: string
           status?: Database["public"]["Enums"]["quotation_status"]
           tax_amount?: number
@@ -431,9 +446,11 @@ export type Database = {
       }
       sales_invoices: {
         Row: {
+          conditions: string | null
           created_at: string
           created_by: string
           customer_id: string
+          customs_duty_status: string | null
           due_date: string | null
           grand_total: number
           id: string
@@ -448,9 +465,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          conditions?: string | null
           created_at?: string
           created_by: string
           customer_id: string
+          customs_duty_status?: string | null
           due_date?: string | null
           grand_total?: number
           id?: string
@@ -465,9 +484,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          conditions?: string | null
           created_at?: string
           created_by?: string
           customer_id?: string
+          customs_duty_status?: string | null
           due_date?: string | null
           grand_total?: number
           id?: string
@@ -537,6 +558,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -545,6 +590,17 @@ export type Database = {
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      get_user_primary_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["user_role"]
+          _user_id: string
+        }
+        Returns: boolean
       }
     }
     Enums: {

@@ -7,19 +7,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Trash2, Plus, User } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Pencil, Trash2, Plus, User, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 
 interface UserProfile {
   id: string;
+  user_id: string;
   full_name: string;
   email: string;
   phone: string | null;
-  role: string;
   is_active: boolean;
   created_at: string;
+  roles: string[]; // Array of role strings from user_roles table
 }
 
 interface UserManagementModalProps {
@@ -30,21 +32,42 @@ interface UserManagementModalProps {
 export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalProps) => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const { toast } = useToast();
   const { isAdmin } = useUserRole();
+
+  const AVAILABLE_ROLES = ['admin', 'sales_staff', 'inventory_staff', 'accountant'];
 
   const fetchUsers = async () => {
     if (!isAdmin) return;
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Fetch profiles
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setUsers(data || []);
+      if (profilesError) throw profilesError;
+
+      // Fetch user_roles for each user
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      if (rolesError) throw rolesError;
+
+      // Combine profiles with their roles
+      const usersWithRoles = (profiles || []).map(profile => ({
+        ...profile,
+        roles: (userRoles || [])
+          .filter(ur => ur.user_id === profile.user_id)
+          .map(ur => ur.role)
+      }));
+
+      setUsers(usersWithRoles);
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -62,25 +85,66 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
     }
   }, [open, isAdmin]);
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole as any }) // Cast to avoid TypeScript strict checking
-        .eq('id', userId);
+  const startEditingRoles = (user: UserProfile) => {
+    setEditingUserId(user.user_id);
+    setSelectedRoles(user.roles);
+  };
 
-      if (error) throw error;
+  const cancelEditing = () => {
+    setEditingUserId(null);
+    setSelectedRoles([]);
+  };
+
+  const toggleRole = (role: string) => {
+    setSelectedRoles(prev => 
+      prev.includes(role) 
+        ? prev.filter(r => r !== role)
+        : [...prev, role]
+    );
+  };
+
+  const saveRoles = async (userId: string) => {
+    if (selectedRoles.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'User must have at least one role',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // Delete existing roles
+      const { error: deleteError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+
+      if (deleteError) throw deleteError;
+
+      // Insert new roles
+      const rolesToInsert = selectedRoles.map(role => ({ 
+        user_id: userId, 
+        role: role as 'admin' | 'sales_staff' | 'inventory_staff' | 'accountant'
+      }));
+      
+      const { error: insertError } = await supabase
+        .from('user_roles')
+        .insert(rolesToInsert);
+
+      if (insertError) throw insertError;
 
       toast({
         title: 'Success',
-        description: 'User role updated successfully',
+        description: 'User authorities updated successfully',
       });
       
+      cancelEditing();
       fetchUsers();
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: `Failed to update role: ${error.message}`,
+        description: `Failed to update roles: ${error.message}`,
         variant: 'destructive',
       });
     }
@@ -139,8 +203,8 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              System Users
+              <Shield className="h-5 w-5" />
+              User Authorities Management
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -162,7 +226,7 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Phone</TableHead>
-                      <TableHead>Role</TableHead>
+                      <TableHead>Authorities</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -174,20 +238,35 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{user.phone || '-'}</TableCell>
                         <TableCell>
-                          <Select
-                            value={user.role}
-                            onValueChange={(newRole) => handleRoleChange(user.id, newRole)}
-                          >
-                            <SelectTrigger className="w-40">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="admin">Admin</SelectItem>
-                              <SelectItem value="sales_staff">Sales Staff</SelectItem>
-                              <SelectItem value="inventory_staff">Inventory Staff</SelectItem>
-                              <SelectItem value="accountant">Accountant</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          {editingUserId === user.user_id ? (
+                            <div className="space-y-2 min-w-[200px]">
+                              {AVAILABLE_ROLES.map(role => (
+                                <div key={role} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`${user.user_id}-${role}`}
+                                    checked={selectedRoles.includes(role)}
+                                    onCheckedChange={() => toggleRole(role)}
+                                  />
+                                  <Label 
+                                    htmlFor={`${user.user_id}-${role}`}
+                                    className="text-sm font-normal cursor-pointer"
+                                  >
+                                    {role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {user.roles.length > 0 ? user.roles.map(role => (
+                                <Badge key={role} variant="secondary">
+                                  {role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                </Badge>
+                              )) : (
+                                <span className="text-muted-foreground text-sm">No roles assigned</span>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge 
@@ -199,18 +278,41 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleToggleActive(user.id, user.is_active)}
-                            >
-                              {user.is_active ? 'Deactivate' : 'Activate'}
-                            </Button>
-                          </div>
+                          {editingUserId === user.user_id ? (
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                onClick={() => saveRoles(user.user_id)}
+                              >
+                                Save
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={cancelEditing}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => startEditingRoles(user)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleToggleActive(user.id, user.is_active)}
+                              >
+                                {user.is_active ? 'Deactivate' : 'Activate'}
+                              </Button>
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
