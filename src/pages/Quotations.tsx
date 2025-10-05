@@ -26,7 +26,7 @@ const Quotations = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('quotations')
-      .select('*, customers(name), quotation_items(*, inventory_items(name))')
+      .select('*, customers(name), quotation_items(*, inventory_items(name)), profiles!quotations_created_by_fkey(full_name)')
       .order('created_at', { ascending: false });
     if (error) {
       toast({ title: 'Error', description: `Failed to load quotations: ${error.message}`, variant: 'destructive' });
@@ -177,6 +177,7 @@ const Quotations = () => {
                       <TableHead>Valid Until</TableHead>
                       <TableHead>Grand Total</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Created By</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -197,6 +198,7 @@ const Quotations = () => {
                             {quotation.status}
                           </span>
                         </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{quotation.profiles?.full_name || 'N/A'}</TableCell>
                         <TableCell>{new Date(quotation.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">

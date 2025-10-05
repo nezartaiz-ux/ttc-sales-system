@@ -146,8 +146,10 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
     try {
       const { total_amount, tax_amount, grand_total } = calculateTotals();
       
-      // Generate invoice number
-      const invoice_number = `INV-${Date.now()}`;
+      // Generate invoice number using database function
+      const { data: numberData, error: numberError } = await supabase.rpc('generate_invoice_number');
+      if (numberError) throw numberError;
+      const invoice_number = numberData;
 
       const invoiceData = {
         invoice_number,

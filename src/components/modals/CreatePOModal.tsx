@@ -133,8 +133,10 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
     try {
       const { total_amount, tax_amount, grand_total } = calculateTotals();
       
-      // Generate PO number
-      const order_number = `PO-${Date.now()}`;
+      // Generate PO number using database function
+      const { data: numberData, error: numberError } = await supabase.rpc('generate_po_number');
+      if (numberError) throw numberError;
+      const order_number = numberData;
 
       const poData = {
         order_number,

@@ -22,7 +22,7 @@ const Inventory = () => {
     const { data, error } = await supabase
       .from('inventory_items')
       .select('*, product_categories(name), suppliers(name)')
-      .order('created_at', { ascending: false });
+      .order('product_categories(name)', { ascending: true });
     if (error) {
       toast({ title: 'Error', description: `Failed to load inventory: ${error.message}`, variant: 'destructive' });
     } else {
@@ -30,6 +30,13 @@ const Inventory = () => {
     }
     setLoading(false);
   };
+
+  const groupedItems = items.reduce((acc: Record<string, any[]>, item) => {
+    const category = item.product_categories?.name || 'Uncategorized';
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(item);
+    return acc;
+  }, {});
 
   useEffect(() => {
     fetchItems();
@@ -107,123 +114,84 @@ const Inventory = () => {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Inventory by Category</CardTitle>
-              <CardDescription>Stock distribution across product categories</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">CAT Gensets</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-20 h-2 bg-primary/20 rounded-full">
-                      <div className="w-16 h-2 bg-primary rounded-full"></div>
-                    </div>
-                    <span className="text-sm font-medium">78</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">CAT Heavy Equipment</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-20 h-2 bg-primary/20 rounded-full">
-                      <div className="w-14 h-2 bg-primary rounded-full"></div>
-                    </div>
-                    <span className="text-sm font-medium">68</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">MF Agricultural Tractors</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-20 h-2 bg-accent/20 rounded-full">
-                      <div className="w-18 h-2 bg-accent rounded-full"></div>
-                    </div>
-                    <span className="text-sm font-medium">89</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Parts & Accessories</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-20 h-2 bg-primary/20 rounded-full">
-                      <div className="w-6 h-2 bg-primary rounded-full"></div>
-                    </div>
-                    <span className="text-sm font-medium">10</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Inventory Items</CardTitle>
-              <CardDescription>All items in stock</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
+        <div className="space-y-6">
+          {loading ? (
+            <Card>
+              <CardContent className="pt-6">
                 <div className="text-center py-8 text-muted-foreground">Loading inventory...</div>
-              ) : items.length === 0 ? (
+              </CardContent>
+            </Card>
+          ) : items.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
                 <div className="text-center py-8 text-muted-foreground">
                   <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No inventory items found</p>
                   <p className="text-sm">Add your first item using the button above</p>
                 </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>SKU</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Supplier</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Unit Price</TableHead>
-                        <TableHead>Selling Price</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.name}</TableCell>
-                          <TableCell>{item.sku || '-'}</TableCell>
-                          <TableCell>{item.product_categories?.name || '-'}</TableCell>
-                          <TableCell>{item.suppliers?.name || '-'}</TableCell>
-                          <TableCell>{item.quantity}</TableCell>
-                          <TableCell>${item.unit_price}</TableCell>
-                          <TableCell>${item.selling_price}</TableCell>
-                          <TableCell>
-                            <span className={item.is_active ? "text-green-600" : "text-red-600"}>
-                              {item.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                if (!isInventory) {
-                                  toast({ title: 'Permission denied', description: 'Only inventory staff or admins can edit items.', variant: 'destructive' });
-                                  return;
-                                }
-                                setEditingItem(item);
-                              }}
-                              disabled={!isInventory}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
+              </CardContent>
+            </Card>
+          ) : (
+            Object.entries(groupedItems).map(([category, categoryItems]: [string, any[]]) => (
+              <Card key={category}>
+                <CardHeader>
+                  <CardTitle>{category}</CardTitle>
+                  <CardDescription>{categoryItems.length} items in this category</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>SKU</TableHead>
+                          <TableHead>Supplier</TableHead>
+                          <TableHead>Quantity</TableHead>
+                          <TableHead>Unit Price</TableHead>
+                          <TableHead>Selling Price</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                      </TableHeader>
+                      <TableBody>
+                        {categoryItems.map((item: any) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.name}</TableCell>
+                            <TableCell>{item.sku || '-'}</TableCell>
+                            <TableCell>{item.suppliers?.name || '-'}</TableCell>
+                            <TableCell>{item.quantity}</TableCell>
+                            <TableCell>${item.unit_price}</TableCell>
+                            <TableCell>${item.selling_price}</TableCell>
+                            <TableCell>
+                              <span className={item.is_active ? "text-green-600" : "text-red-600"}>
+                                {item.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (!isInventory) {
+                                    toast({ title: 'Permission denied', description: 'Only inventory staff or admins can edit items.', variant: 'destructive' });
+                                    return;
+                                  }
+                                  setEditingItem(item);
+                                }}
+                                disabled={!isInventory}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       </div>
 

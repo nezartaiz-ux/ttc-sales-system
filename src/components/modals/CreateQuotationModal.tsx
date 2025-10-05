@@ -143,8 +143,10 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
     try {
       const { total_amount, tax_amount, grand_total } = calculateTotals();
       
-      // Generate quotation number
-      const quotation_number = `QUO-${Date.now()}`;
+      // Generate quotation number using database function
+      const { data: numberData, error: numberError } = await supabase.rpc('generate_quotation_number');
+      if (numberError) throw numberError;
+      const quotation_number = numberData;
 
       const quotationData = {
         quotation_number,

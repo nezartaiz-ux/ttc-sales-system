@@ -26,7 +26,7 @@ const PurchaseOrders = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('purchase_orders')
-      .select('*, suppliers(name), purchase_order_items(*, inventory_items(name))')
+      .select('*, suppliers(name), purchase_order_items(*, inventory_items(name)), profiles!purchase_orders_created_by_fkey(full_name)')
       .order('created_at', { ascending: false });
     if (error) {
       toast({ title: 'Error', description: `Failed to load purchase orders: ${error.message}`, variant: 'destructive' });
@@ -177,6 +177,7 @@ const PurchaseOrders = () => {
                       <TableHead>Expected Delivery</TableHead>
                       <TableHead>Grand Total</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Created By</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -198,6 +199,7 @@ const PurchaseOrders = () => {
                             {po.status.replace('_', ' ')}
                           </span>
                         </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{po.profiles?.full_name || 'N/A'}</TableCell>
                         <TableCell>{new Date(po.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
