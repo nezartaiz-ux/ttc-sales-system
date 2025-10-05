@@ -7,6 +7,7 @@ import { Plus, ShoppingCart, Truck, Package, Eye, Download, Printer } from "luci
 import { CreatePOModal } from "@/components/modals/CreatePOModal";
 import { ViewPOModal } from "@/components/modals/ViewPOModal";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { generatePOPDF, printPO } from "@/utils/pdfExport";
@@ -17,7 +18,8 @@ const PurchaseOrders = () => {
   const [selectedPO, setSelectedPO] = useState<any>(null);
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { isInventory } = useUserRole();
+  const { isAdmin } = useUserRole();
+  const { canCreate, canView } = useUserPermissions();
   const { toast } = useToast();
 
   const fetchPurchaseOrders = async () => {
@@ -90,13 +92,13 @@ const PurchaseOrders = () => {
           <Button 
             className="bg-accent hover:bg-accent/90"
             onClick={() => {
-              if (!isInventory) {
-                toast({ title: 'Permission denied', description: 'Only inventory staff or admins can create purchase orders.', variant: 'destructive' });
+              if (!isAdmin && !canCreate('purchase_orders')) {
+                toast({ title: 'Permission denied', description: 'You do not have permission to create purchase orders.', variant: 'destructive' });
                 return;
               }
               setIsCreateModalOpen(true);
             }}
-            disabled={!isInventory}
+            disabled={!isAdmin && !canCreate('purchase_orders')}
           >
             <Plus className="h-4 w-4 mr-2" />
             Create PO

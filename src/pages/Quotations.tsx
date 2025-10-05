@@ -7,6 +7,7 @@ import { Plus, FileText, Clock, CheckCircle, Eye, Download, Printer } from "luci
 import { CreateQuotationModal } from "@/components/modals/CreateQuotationModal";
 import { ViewQuotationModal } from "@/components/modals/ViewQuotationModal";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { generateQuotationPDF, printQuotation } from "@/utils/pdfExport";
@@ -17,7 +18,8 @@ const Quotations = () => {
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
   const [quotations, setQuotations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { isSales } = useUserRole();
+  const { isAdmin } = useUserRole();
+  const { canCreate, canView } = useUserPermissions();
   const { toast } = useToast();
 
   const fetchQuotations = async () => {
@@ -90,13 +92,13 @@ const Quotations = () => {
           <Button 
             className="bg-primary hover:bg-primary/90"
             onClick={() => {
-              if (!isSales) {
-                toast({ title: 'Permission denied', description: 'Only sales staff or admins can create quotations.', variant: 'destructive' });
+              if (!isAdmin && !canCreate('quotations')) {
+                toast({ title: 'Permission denied', description: 'You do not have permission to create quotations.', variant: 'destructive' });
                 return;
               }
               setIsCreateModalOpen(true);
             }}
-            disabled={!isSales}
+            disabled={!isAdmin && !canCreate('quotations')}
           >
             <Plus className="h-4 w-4 mr-2" />
             Create Quotation

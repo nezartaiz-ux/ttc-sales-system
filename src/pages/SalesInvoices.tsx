@@ -5,14 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Plus, Receipt, DollarSign, CreditCard } from "lucide-react";
 import { CreateInvoiceModal } from "@/components/modals/CreateInvoiceModal";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useToast } from "@/hooks/use-toast";
 
 const SalesInvoices = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const { isSales, isAccountant } = useUserRole();
+  const { isAdmin } = useUserRole();
+  const { canCreate } = useUserPermissions();
   const { toast } = useToast();
 
-  const canCreateInvoice = isSales || isAccountant;
+  const canCreateInvoice = isAdmin || canCreate('sales_invoices');
 
   return (
     <DashboardLayout>
@@ -26,7 +28,7 @@ const SalesInvoices = () => {
             className="bg-primary hover:bg-primary/90"
             onClick={() => {
               if (!canCreateInvoice) {
-                toast({ title: 'Permission denied', description: 'Only sales staff, accountants or admins can create invoices.', variant: 'destructive' });
+                toast({ title: 'Permission denied', description: 'You do not have permission to create invoices.', variant: 'destructive' });
                 return;
               }
               setIsCreateModalOpen(true);
