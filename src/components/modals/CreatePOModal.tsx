@@ -36,7 +36,7 @@ interface CreatePOModalProps {
 export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalProps) => {
   const [formData, setFormData] = useState({
     supplier_id: '',
-    expected_delivery_date: '',
+    expected_delivery_date: new Date().toISOString().split('T')[0], // Set to today's date
     notes: ''
   });
   const [items, setItems] = useState<POItem[]>([]);
@@ -56,7 +56,11 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
       setSuppliers(suppliers || []);
       setInventoryItems(inventory || []);
     };
-    if (open) loadData();
+    if (open) {
+      loadData();
+      // Reset expected_delivery_date to today when modal opens
+      setFormData(prev => ({ ...prev, expected_delivery_date: new Date().toISOString().split('T')[0] }));
+    }
   }, [open]);
 
   const addItem = () => {

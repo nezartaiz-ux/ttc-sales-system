@@ -44,7 +44,7 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
     quotation_id: '',
     invoice_type: 'cash' as 'cash' | 'credit',
     payment_terms: 30,
-    due_date: '',
+    due_date: new Date().toISOString().split('T')[0], // Set to today's date
     customs_duty_status: '',
     conditions: '',
     notes: ''
@@ -69,7 +69,11 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
       setQuotations(quotations || []);
       setInventoryItems(inventory || []);
     };
-    if (open) loadData();
+    if (open) {
+      loadData();
+      // Reset due_date to today when modal opens
+      setFormData(prev => ({ ...prev, due_date: new Date().toISOString().split('T')[0] }));
+    }
   }, [open]);
 
   const addItem = () => {

@@ -41,7 +41,7 @@ interface CreateQuotationModalProps {
 export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQuotationModalProps) => {
   const [formData, setFormData] = useState({
     customer_id: '',
-    validity_period: '',
+    validity_period: new Date().toISOString().split('T')[0], // Set to today's date
     payment_terms: '',
     customs_duty_status: '',
     conditions: '',
@@ -66,7 +66,11 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
       setCustomers(customers || []);
       setInventoryItems(inventory || []);
     };
-    if (open) loadData();
+    if (open) {
+      loadData();
+      // Reset validity_period to today when modal opens
+      setFormData(prev => ({ ...prev, validity_period: new Date().toISOString().split('T')[0] }));
+    }
   }, [open]);
 
   const addItem = () => {
