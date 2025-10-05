@@ -2,13 +2,15 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings as SettingsIcon, User, Shield, Database } from "lucide-react";
+import { Settings as SettingsIcon, User, Shield, Database, Lock } from "lucide-react";
 import { UserManagementModal } from "@/components/modals/UserManagementModal";
+import { PermissionsManagementModal } from "@/components/modals/PermissionsManagementModal";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
 
 const Settings = () => {
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
+  const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
   const { isAdmin } = useUserRole();
   const { toast } = useToast();
 
@@ -103,11 +105,11 @@ const Settings = () => {
                       toast({ title: 'Permission denied', description: 'Only admins can manage permissions.', variant: 'destructive' });
                       return;
                     }
-                    toast({ title: 'Info', description: 'Access permissions are managed through user roles.' });
+                    setIsPermissionsOpen(true);
                   }}
                   disabled={!isAdmin}
                 >
-                  <SettingsIcon className="h-4 w-4 mr-2" />
+                  <Lock className="h-4 w-4 mr-2" />
                   Access Permissions
                 </Button>
               </div>
@@ -156,6 +158,10 @@ const Settings = () => {
       <UserManagementModal
         open={isUserManagementOpen}
         onOpenChange={setIsUserManagementOpen}
+      />
+      <PermissionsManagementModal
+        open={isPermissionsOpen}
+        onOpenChange={setIsPermissionsOpen}
       />
     </DashboardLayout>
   );

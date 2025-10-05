@@ -558,6 +558,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_permissions: {
+        Row: {
+          action: Database["public"]["Enums"]["permission_action"]
+          created_at: string | null
+          id: string
+          module: Database["public"]["Enums"]["system_module"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["permission_action"]
+          created_at?: string | null
+          id?: string
+          module: Database["public"]["Enums"]["system_module"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["permission_action"]
+          created_at?: string | null
+          id?: string
+          module?: Database["public"]["Enums"]["system_module"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -591,9 +618,24 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      get_user_permissions: {
+        Args: { _user_id: string }
+        Returns: {
+          action: Database["public"]["Enums"]["permission_action"]
+          module: Database["public"]["Enums"]["system_module"]
+        }[]
+      }
       get_user_primary_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      has_permission: {
+        Args: {
+          _action: Database["public"]["Enums"]["permission_action"]
+          _module: Database["public"]["Enums"]["system_module"]
+          _user_id: string
+        }
+        Returns: boolean
       }
       has_role: {
         Args: {
@@ -613,8 +655,19 @@ export type Database = {
     Enums: {
       invoice_status: "draft" | "sent" | "paid" | "overdue" | "cancelled"
       invoice_type: "cash" | "credit"
+      permission_action: "view" | "create" | "edit" | "delete"
       purchase_order_status: "draft" | "sent" | "received" | "cancelled"
       quotation_status: "draft" | "sent" | "accepted" | "rejected" | "expired"
+      system_module:
+        | "customers"
+        | "suppliers"
+        | "inventory"
+        | "categories"
+        | "quotations"
+        | "purchase_orders"
+        | "sales_invoices"
+        | "reports"
+        | "settings"
       user_role:
         | "admin"
         | "sales_staff"
@@ -750,8 +803,20 @@ export const Constants = {
     Enums: {
       invoice_status: ["draft", "sent", "paid", "overdue", "cancelled"],
       invoice_type: ["cash", "credit"],
+      permission_action: ["view", "create", "edit", "delete"],
       purchase_order_status: ["draft", "sent", "received", "cancelled"],
       quotation_status: ["draft", "sent", "accepted", "rejected", "expired"],
+      system_module: [
+        "customers",
+        "suppliers",
+        "inventory",
+        "categories",
+        "quotations",
+        "purchase_orders",
+        "sales_invoices",
+        "reports",
+        "settings",
+      ],
       user_role: [
         "admin",
         "sales_staff",
