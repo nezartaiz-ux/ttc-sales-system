@@ -114,25 +114,24 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
     }
 
     try {
-      // Delete existing roles
-      const { error: deleteError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
+      // Prevent self lockout: do not allow removing your own admin role
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && user.id === userId && !selectedRoles.includes('admin')) {
+        toast({
+          title: 'Blocked',
+          description: 'You cannot remove your own admin role. Assign admin or ask another admin to change your roles.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-      if (deleteError) throw deleteError;
+      // Use secure RPC to update roles atomically under RLS
+      const { error } = await supabase.rpc('update_user_roles', {
+        target_user_id: userId,
+        new_roles: selectedRoles as any, // enum[] on the DB side
+      });
 
-      // Insert new roles
-      const rolesToInsert = selectedRoles.map(role => ({ 
-        user_id: userId, 
-        role: role as 'admin' | 'sales_staff' | 'inventory_staff' | 'accountant'
-      }));
-      
-      const { error: insertError } = await supabase
-        .from('user_roles')
-        .insert(rolesToInsert);
-
-      if (insertError) throw insertError;
+      if (error) throw error;
 
       toast({
         title: 'Success',

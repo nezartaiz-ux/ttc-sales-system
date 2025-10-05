@@ -602,6 +602,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_user_roles: {
+        Args: {
+          new_roles: Database["public"]["Enums"]["user_role"][]
+          target_user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       invoice_status: "draft" | "sent" | "paid" | "overdue" | "cancelled"
