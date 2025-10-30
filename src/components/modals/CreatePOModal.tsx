@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,6 +42,8 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
   const [items, setItems] = useState<POItem[]>([]);
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
   const [inventoryItems, setInventoryItems] = useState<{ id: string; name: string; unit_price: number }[]>([]);
+  const [quotations, setQuotations] = useState<{ id: string; quotation_number: string; customer_id: string }[]>([]);
+  const [selectedQuotationId, setSelectedQuotationId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
@@ -49,17 +51,20 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
 
   useEffect(() => {
     const loadData = async () => {
-      const [{ data: suppliers }, { data: inventory }] = await Promise.all([
+      const [{ data: suppliers }, { data: inventory }, { data: quots }] = await Promise.all([
         supabase.from('suppliers').select('id, name').eq('is_active', true).order('name'),
-        supabase.from('inventory_items').select('id, name, unit_price').eq('is_active', true).order('name')
+        supabase.from('inventory_items').select('id, name, unit_price').eq('is_active', true).order('name'),
+        supabase.from('quotations').select('id, quotation_number, customer_id').order('created_at', { ascending: false })
       ]);
       setSuppliers(suppliers || []);
       setInventoryItems(inventory || []);
+      setQuotations(quots || []);
     };
     if (open) {
       loadData();
       // Reset expected_delivery_date to today when modal opens
       setFormData(prev => ({ ...prev, expected_delivery_date: new Date().toISOString().split('T')[0] }));
+      setSelectedQuotationId('');
     }
   }, [open]);
 
@@ -99,6 +104,39 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
 
   const removeItem = (index: number) => {
     setItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const loadFromQuotation = async () => {
+    if (!selectedQuotationId) {
+      toast({ title: 'Error', description: 'Please select a quotation', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const { data: quotationItems, error } = await supabase
+        .from('quotation_items')
+        .select('inventory_item_id, quantity, unit_price, total_price, inventory_items(name)')
+        .eq('quotation_id', selectedQuotationId);
+
+      if (error) throw error;
+
+      if (quotationItems && quotationItems.length > 0) {
+        const importedItems: POItem[] = quotationItems.map((qi: any) => ({
+          inventory_item_id: qi.inventory_item_id,
+          item_name: qi.inventory_items?.name || '',
+          quantity: qi.quantity,
+          unit_price: qi.unit_price,
+          total_price: qi.total_price
+        }));
+        
+        setItems(importedItems);
+        toast({ title: 'Success', description: `Loaded ${quotationItems.length} items from quotation` });
+      } else {
+        toast({ title: 'Info', description: 'No items found in selected quotation', variant: 'default' });
+      }
+    } catch (error: any) {
+      toast({ title: 'Error', description: `Failed to load quotation items: ${error.message}`, variant: 'destructive' });
+    }
   };
 
   const calculateTotals = () => {
@@ -232,14 +270,35 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
           </div>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle>Order Items</CardTitle>
-              <Button type="button" onClick={addItem} size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Item
-              </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <div className="flex gap-3 items-end">
+                <div className="flex-1 space-y-2">
+                  <Label>Load from Quotation</Label>
+                  <Select value={selectedQuotationId} onValueChange={setSelectedQuotationId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select quotation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {quotations.map((q) => (
+                        <SelectItem key={q.id} value={q.id}>{q.quotation_number}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="button" onClick={loadFromQuotation} variant="secondary">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Load Items
+                </Button>
+                <Button type="button" onClick={addItem} size="default">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Item
+                </Button>
+              </div>
+              
+              <div>
               {items.length === 0 ? (
                 <p className="text-center text-muted-foreground py-4">No items added</p>
               ) : (
@@ -305,6 +364,7 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
                   </TableBody>
                 </Table>
               )}
+              </div>
             </CardContent>
           </Card>
 
