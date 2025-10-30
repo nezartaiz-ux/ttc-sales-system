@@ -83,6 +83,9 @@ interface POData {
 
 export const generateQuotationPDF = (data: QuotationData) => {
   const doc = new jsPDF();
+  const pageHeight = doc.internal.pageSize.height;
+  const pageWidth = doc.internal.pageSize.width;
+  const marginBottom = 20; // Space for footer
   
   // Add header with logo and company info
   addPDFHeader(doc, true);
@@ -114,24 +117,52 @@ export const generateQuotationPDF = (data: QuotationData) => {
       ['', '', 'Tax:', `$${data.tax_amount.toFixed(2)}`],
       ['', '', 'Grand Total:', `$${data.grand_total.toFixed(2)}`]
     ],
-    showFoot: 'lastPage'
+    showFoot: 'lastPage',
+    margin: { bottom: marginBottom }
   });
   
-  // Notes
+  // Notes with proper multi-line handling
   if (data.notes) {
-    const finalY = (doc as any).lastAutoTable.finalY || 80;
+    let currentY = (doc as any).lastAutoTable.finalY + 10;
     doc.setFontSize(10);
-    doc.text(`Notes: ${data.notes}`, 14, finalY + 10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Terms & Conditions:', 14, currentY);
+    
+    currentY += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    
+    // Split text into lines that fit the page width
+    const maxWidth = pageWidth - 28; // 14mm margin on each side
+    const lines = doc.splitTextToSize(data.notes, maxWidth);
+    
+    // Add lines with page break handling
+    lines.forEach((line: string) => {
+      if (currentY > pageHeight - marginBottom) {
+        doc.addPage();
+        addPDFHeader(doc, true);
+        currentY = 40; // Start below header on new page
+      }
+      doc.text(line, 14, currentY);
+      currentY += 5;
+    });
   }
   
-  // Add footer
-  addPDFFooter(doc);
+  // Add footer to all pages
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    addPDFFooter(doc);
+  }
   
   doc.save(`quotation-${data.quotation_number}.pdf`);
 };
 
 export const generatePOPDF = (data: POData) => {
   const doc = new jsPDF();
+  const pageHeight = doc.internal.pageSize.height;
+  const pageWidth = doc.internal.pageSize.width;
+  const marginBottom = 20; // Space for footer
   
   // Add header with logo and company info
   addPDFHeader(doc, true);
@@ -163,18 +194,43 @@ export const generatePOPDF = (data: POData) => {
       ['', '', 'Tax:', `$${data.tax_amount.toFixed(2)}`],
       ['', '', 'Grand Total:', `$${data.grand_total.toFixed(2)}`]
     ],
-    showFoot: 'lastPage'
+    showFoot: 'lastPage',
+    margin: { bottom: marginBottom }
   });
   
-  // Notes
+  // Notes with proper multi-line handling
   if (data.notes) {
-    const finalY = (doc as any).lastAutoTable.finalY || 80;
+    let currentY = (doc as any).lastAutoTable.finalY + 10;
     doc.setFontSize(10);
-    doc.text(`Notes: ${data.notes}`, 14, finalY + 10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Notes:', 14, currentY);
+    
+    currentY += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    
+    // Split text into lines that fit the page width
+    const maxWidth = pageWidth - 28; // 14mm margin on each side
+    const lines = doc.splitTextToSize(data.notes, maxWidth);
+    
+    // Add lines with page break handling
+    lines.forEach((line: string) => {
+      if (currentY > pageHeight - marginBottom) {
+        doc.addPage();
+        addPDFHeader(doc, true);
+        currentY = 40; // Start below header on new page
+      }
+      doc.text(line, 14, currentY);
+      currentY += 5;
+    });
   }
   
-  // Add footer
-  addPDFFooter(doc);
+  // Add footer to all pages
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    addPDFFooter(doc);
+  }
   
   doc.save(`purchase-order-${data.order_number}.pdf`);
 };
@@ -201,7 +257,9 @@ export const printQuotation = (data: QuotationData) => {
           th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
           th { background-color: #f2f2f2; }
           .totals { text-align: right; margin-top: 20px; }
-          .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 10px; color: #555; }
+          .notes { margin-top: 30px; margin-bottom: 60px; white-space: pre-wrap; font-size: 11px; line-height: 1.5; }
+          .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 20px; border-top: 1px solid #ddd; font-size: 10px; color: #555; background: white; }
+          @page { margin-bottom: 80px; }
         </style>
       </head>
       <body>
@@ -243,7 +301,7 @@ export const printQuotation = (data: QuotationData) => {
           <p><strong>Tax:</strong> $${data.tax_amount.toFixed(2)}</p>
           <p><strong>Grand Total:</strong> $${data.grand_total.toFixed(2)}</p>
         </div>
-        ${data.notes ? `<p><strong>Notes:</strong> ${data.notes}</p>` : ''}
+        ${data.notes ? `<div class="notes"><strong>Terms & Conditions:</strong><br/>${data.notes.replace(/\n/g, '<br/>')}</div>` : ''}
         <div class="footer">
           <p>${COMPANY_INFO.footer.postBox} | ${COMPANY_INFO.footer.location}</p>
           <p>${COMPANY_INFO.footer.phone} | ${COMPANY_INFO.footer.fax}</p>
@@ -279,7 +337,9 @@ export const printPO = (data: POData) => {
           th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
           th { background-color: #f2f2f2; }
           .totals { text-align: right; margin-top: 20px; }
-          .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 10px; color: #555; }
+          .notes { margin-top: 30px; margin-bottom: 60px; white-space: pre-wrap; font-size: 11px; line-height: 1.5; }
+          .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 20px; border-top: 1px solid #ddd; font-size: 10px; color: #555; background: white; }
+          @page { margin-bottom: 80px; }
         </style>
       </head>
       <body>
@@ -321,7 +381,7 @@ export const printPO = (data: POData) => {
           <p><strong>Tax:</strong> $${data.tax_amount.toFixed(2)}</p>
           <p><strong>Grand Total:</strong> $${data.grand_total.toFixed(2)}</p>
         </div>
-        ${data.notes ? `<p><strong>Notes:</strong> ${data.notes}</p>` : ''}
+        ${data.notes ? `<div class="notes"><strong>Notes:</strong><br/>${data.notes.replace(/\n/g, '<br/>')}</div>` : ''}
         <div class="footer">
           <p>${COMPANY_INFO.footer.postBox} | ${COMPANY_INFO.footer.location}</p>
           <p>${COMPANY_INFO.footer.phone} | ${COMPANY_INFO.footer.fax}</p>
