@@ -65,7 +65,7 @@ const quotationSchema = z.object({
   customer_id: z.string().uuid('Select a valid customer'),
   validity_period: z.string().min(1, 'Validity period is required'),
   payment_terms: z.string().max(200).optional().or(z.literal('')),
-  customs_duty_status: z.enum(['CIF','DDP']).optional().or(z.literal('')),
+  customs_duty_status: z.enum(['CIF Aden Freezone','DDP Aden','DDP Sana\'a']).optional().or(z.literal('')),
   conditions: z.string().max(1000).optional().or(z.literal('')),
   delivery_terms: z.string().max(300).optional().or(z.literal('')),
   delivery_details: z.string().max(1000).optional().or(z.literal('')),
@@ -165,9 +165,28 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
 
   const calculateTotals = () => {
     const total_amount = items.reduce((sum, item) => sum + item.total_price, 0);
-    const tax_amount = total_amount * 0.15; // 15% tax
+    
+    // Calculate tax based on customs duty status
+    let taxRate = 0;
+    if (formData.customs_duty_status === 'DDP Aden') {
+      taxRate = 0.17; // 17%
+    } else if (formData.customs_duty_status === 'DDP Sana\'a') {
+      taxRate = 0.21; // 21%
+    }
+    // CIF Aden Freezone = 0%
+    
+    const tax_amount = total_amount * taxRate;
     const grand_total = total_amount + tax_amount;
-    return { total_amount, tax_amount, grand_total };
+    return { total_amount, tax_amount, grand_total, taxRate };
+  };
+
+  const getTaxLabel = () => {
+    if (formData.customs_duty_status === 'DDP Aden') {
+      return 'Tax (17%)';
+    } else if (formData.customs_duty_status === 'DDP Sana\'a') {
+      return 'Tax (21%)';
+    }
+    return 'Tax (0%)';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -321,11 +340,12 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
               <Label>Customs & Duty Status</Label>
               <Select value={formData.customs_duty_status} onValueChange={(v) => setFormData(p => ({ ...p, customs_duty_status: v }))}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select CIF or DDP" />
+                  <SelectValue placeholder="Select customs & duty status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CIF">CIF</SelectItem>
-                  <SelectItem value="DDP">DDP</SelectItem>
+                  <SelectItem value="CIF Aden Freezone">CIF Aden Freezone: 0% (without customs duty and sales tax)</SelectItem>
+                  <SelectItem value="DDP Aden">DDP Aden: 17% (Aden customs duty & sales tax paid basis)</SelectItem>
+                  <SelectItem value="DDP Sana'a">DDP Sana'a: 21% (Aden & Sana'a customs duty & sales tax paid basis)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -446,7 +466,7 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
                     <span>${totals.total_amount.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Tax (15%):</span>
+                    <span>{getTaxLabel()}:</span>
                     <span>${totals.tax_amount.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg">
