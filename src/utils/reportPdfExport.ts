@@ -4,9 +4,14 @@ import tehamaLogo from '@/assets/tehama-logo.png';
 
 // Company information
 const COMPANY_INFO = {
-  name: "CAT Company",
-  address: "Sana'a Branch",
-  city: "Sana'a, Yemen"
+  name: "Tehama Trading Company",
+  address: "Sana'a Regional Office",
+  footer: {
+    postBox: "Post Box: 73",
+    location: "Sana'a, Yemen",
+    phone: "Phone: 967 1 208916/400266",
+    fax: "Fax: 967 1 466056"
+  }
 };
 
 // Helper function to add header with logo and company info
@@ -18,7 +23,6 @@ const addReportHeader = (doc: jsPDF) => {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.text(COMPANY_INFO.address, 14, 21);
-  doc.text(COMPANY_INFO.city, 14, 26);
   
   // Logo on top-right
   try {
@@ -27,7 +31,27 @@ const addReportHeader = (doc: jsPDF) => {
     console.error('Error adding logo to PDF:', e);
   }
   
-  return 35; // Return Y position where content should start
+  return 30; // Return Y position where content should start
+};
+
+// Helper function to add footer
+const addReportFooter = (doc: jsPDF, pageNum: number, totalPages: number) => {
+  const pageHeight = doc.internal.pageSize.height;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  
+  // Center footer with company info
+  const footerText = `${COMPANY_INFO.footer.postBox} | ${COMPANY_INFO.footer.location} | ${COMPANY_INFO.footer.phone} | ${COMPANY_INFO.footer.fax}`;
+  const textWidth = doc.getTextWidth(footerText);
+  const centerX = (doc.internal.pageSize.width - textWidth) / 2;
+  doc.text(footerText, centerX, pageHeight - 15);
+  
+  // Page number
+  doc.text(
+    `Page ${pageNum} of ${totalPages} - Generated on ${new Date().toLocaleDateString()}`,
+    14,
+    pageHeight - 10
+  );
 };
 
 export const generateReportPDF = (reportData: {
@@ -80,12 +104,7 @@ export const generateReportPDF = (reportData: {
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    doc.setFontSize(8);
-    doc.text(
-      `Page ${i} of ${pageCount} - Generated on ${new Date().toLocaleDateString()}`,
-      14,
-      doc.internal.pageSize.height - 10
-    );
+    addReportFooter(doc, i, pageCount);
   }
   
   const filename = `${reportData.title.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;

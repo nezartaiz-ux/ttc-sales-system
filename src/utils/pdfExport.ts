@@ -5,9 +5,14 @@ import tehamaLogo from '@/assets/tehama-logo.png';
 
 // Company information
 const COMPANY_INFO = {
-  name: "CAT Company",
-  address: "Sana'a Branch",
-  city: "Sana'a, Yemen"
+  name: "Tehama Trading Company",
+  address: "Sana'a Regional Office",
+  footer: {
+    postBox: "Post Box: 73",
+    location: "Sana'a, Yemen",
+    phone: "Phone: 967 1 208916/400266",
+    fax: "Fax: 967 1 466056"
+  }
 };
 
 // Helper function to add header with logo and company info
@@ -19,7 +24,6 @@ const addPDFHeader = (doc: jsPDF, isCat: boolean = true) => {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.text(COMPANY_INFO.address, 14, 21);
-  doc.text(COMPANY_INFO.city, 14, 26);
   
   // Logo on top-right
   const logo = isCat ? tehamaLogo : mfLogo;
@@ -29,7 +33,20 @@ const addPDFHeader = (doc: jsPDF, isCat: boolean = true) => {
     console.error('Error adding logo to PDF:', e);
   }
   
-  return 35; // Return Y position where content should start
+  return 30; // Return Y position where content should start
+};
+
+// Helper function to add footer
+const addPDFFooter = (doc: jsPDF) => {
+  const pageHeight = doc.internal.pageSize.height;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  
+  // Center footer
+  const footerText = `${COMPANY_INFO.footer.postBox} | ${COMPANY_INFO.footer.location} | ${COMPANY_INFO.footer.phone} | ${COMPANY_INFO.footer.fax}`;
+  const textWidth = doc.getTextWidth(footerText);
+  const centerX = (doc.internal.pageSize.width - textWidth) / 2;
+  doc.text(footerText, centerX, pageHeight - 10);
 };
 
 interface QuotationData {
@@ -107,6 +124,9 @@ export const generateQuotationPDF = (data: QuotationData) => {
     doc.text(`Notes: ${data.notes}`, 14, finalY + 10);
   }
   
+  // Add footer
+  addPDFFooter(doc);
+  
   doc.save(`quotation-${data.quotation_number}.pdf`);
 };
 
@@ -153,6 +173,9 @@ export const generatePOPDF = (data: POData) => {
     doc.text(`Notes: ${data.notes}`, 14, finalY + 10);
   }
   
+  // Add footer
+  addPDFFooter(doc);
+  
   doc.save(`purchase-order-${data.order_number}.pdf`);
 };
 
@@ -178,6 +201,7 @@ export const printQuotation = (data: QuotationData) => {
           th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
           th { background-color: #f2f2f2; }
           .totals { text-align: right; margin-top: 20px; }
+          .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 10px; color: #555; }
         </style>
       </head>
       <body>
@@ -185,7 +209,6 @@ export const printQuotation = (data: QuotationData) => {
           <div class="company-info">
             <h3>${COMPANY_INFO.name}</h3>
             <p>${COMPANY_INFO.address}</p>
-            <p>${COMPANY_INFO.city}</p>
           </div>
           <img src="${tehamaLogo}" alt="Company Logo" class="logo" />
         </div>
@@ -221,6 +244,10 @@ export const printQuotation = (data: QuotationData) => {
           <p><strong>Grand Total:</strong> $${data.grand_total.toFixed(2)}</p>
         </div>
         ${data.notes ? `<p><strong>Notes:</strong> ${data.notes}</p>` : ''}
+        <div class="footer">
+          <p>${COMPANY_INFO.footer.postBox} | ${COMPANY_INFO.footer.location}</p>
+          <p>${COMPANY_INFO.footer.phone} | ${COMPANY_INFO.footer.fax}</p>
+        </div>
         <script>window.print(); window.onafterprint = () => window.close();</script>
       </body>
     </html>
@@ -252,6 +279,7 @@ export const printPO = (data: POData) => {
           th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
           th { background-color: #f2f2f2; }
           .totals { text-align: right; margin-top: 20px; }
+          .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 10px; color: #555; }
         </style>
       </head>
       <body>
@@ -259,7 +287,6 @@ export const printPO = (data: POData) => {
           <div class="company-info">
             <h3>${COMPANY_INFO.name}</h3>
             <p>${COMPANY_INFO.address}</p>
-            <p>${COMPANY_INFO.city}</p>
           </div>
           <img src="${tehamaLogo}" alt="Company Logo" class="logo" />
         </div>
@@ -295,6 +322,10 @@ export const printPO = (data: POData) => {
           <p><strong>Grand Total:</strong> $${data.grand_total.toFixed(2)}</p>
         </div>
         ${data.notes ? `<p><strong>Notes:</strong> ${data.notes}</p>` : ''}
+        <div class="footer">
+          <p>${COMPANY_INFO.footer.postBox} | ${COMPANY_INFO.footer.location}</p>
+          <p>${COMPANY_INFO.footer.phone} | ${COMPANY_INFO.footer.fax}</p>
+        </div>
         <script>window.print(); window.onafterprint = () => window.close();</script>
       </body>
     </html>
