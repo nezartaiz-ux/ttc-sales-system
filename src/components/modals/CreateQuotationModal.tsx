@@ -13,6 +13,54 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
 
+const DEFAULT_TERMS_CONDITIONS = `TERMS AND CONDITIONS OF SALE :
+
+	Manufacturer's warranty:
+
+Manufacturer's warranty will be applicable for One year or 2500 Hours whichever occurs earlier from the date of commissioning of Genset. 
+Warranty shall not cover failures that might result due to accidents, misuse or due to not following proper operation and maintenance instructions. NO WARRANTY APPLICABLE ON FUEL PUMP, INJECTORS, V'-BELTS & BATTERY. 
+During the warranty period, Tehama Service Engineer will be deputed to only those areas where security threat is not there. The transportation of Tehama engineer with proper security to site and back to Tehama office to be arranged by the owner of the Genset.  
+"Warranty applies to the customer purchasing the Genset / Panel. If ownership changes hand warranty is null and void.
+
+
+	Force Majeure: 
+The delivery indicated is subject to standard "Force Majeure". 
+"Force majeure" shall mean any circumstance which is unforeseeable, sudden, insurmountable and outside the control of the parties and not caused by the action, omission or negligence of the Party or its subcontractors claiming suspension, including without limitation acts of God, embargoes, epidemic, flood, explosion, fire, lightning, earthquake, war, riot, military action, insurrection, terrorist or anti- Government acts, civil disturbance, strike (except the strike of the Personnel), Government order, decision or administrative ruling, Court order, Government inaction. 
+
+
+	Insurance: 
+If the ownership of the goods has already been transferred to the owner at the time of claim of insurance, the bidder will agree to coordinate for the fair settlement of the insurance, the bidder will agree to co-ordinate for fair settlement of the insurance but all the paper work will have transacted by the owner,
+The bidder has included in his bid only for insurance of all supplies as follows:
+1.	Marine insurance for all imported goods up to Hodeidah' / Aden port as per local insurance company limitations.
+2.	Workmen compensation insurance for Tehama and its sub contractor's personnel as applicable by local laws, when visiting site.
+All other insurance coverage required for the contract shall be taken by the buyer, such as land insurance, erection all risk insurance for the equipment covered under this contract and Surrounding properties. Any insurance required by the buyer's personnel, its contractor or any property on the premises where the project could be executed under this contract.
+	Erection & Commissioning: 
+    
+While the commissioning of the unit quoted will be done by our Engineer free of charge, it should be understood that all the Civil / Mechanical / Electrical work and material connected with the installation and erection of the unit and connecting to the load are to be arranged by the buyer.
+
+	Validity: 
+      
+This offer is valid for 2 Weeks from the date of price part only and thereafter subject to reconfirmation for the factory orders. Delivery is subject to prior sale.
+
+	Cancellation: 
+      
+Order once placed cannot be cancelled without the concurrence of the seller.
+     In the event of the buyer canceling the order, the advance paid by the buyer will be forfeited.
+
+EXCLUSIONS:
+ Our offer excludes the following:
+1.	Bulk fuel storage Tank, fuel unloading facility like transfer pumps, fuel flow meters.
+2.	Fuel & consumables during trial run / commissioning at site.
+3.	Erection of Genset. However, Commissioning of the Genset will be carried out by our Engineer at no extra charge.
+4.	Piping for Exhaust, Fuel and lube oil.
+5.	Insulation for Exhaust pipe & Exhaust supports.
+6.	All kinds of Civil Work.
+7.	Any other items not covered under this proposal.
+The terms & conditions made by us as well as the technical specification of the unit offered are the only ones which are acceptable to us and no other conditions will be applied or implied upon unless agreed to by us in writing.
+
+We have attached herewith the Catalogue which shows optional attachments. Please note all may not be applicable for the offered Genset. Refer to the technical specifications attached.
+We sincerely trust that our offer will meet with your requirement and look forward to receiving your order.`;
+
 const quotationSchema = z.object({
   customer_id: z.string().uuid('Select a valid customer'),
   validity_period: z.string().min(1, 'Validity period is required'),
@@ -21,7 +69,7 @@ const quotationSchema = z.object({
   conditions: z.string().max(1000).optional().or(z.literal('')),
   delivery_terms: z.string().max(300).optional().or(z.literal('')),
   delivery_details: z.string().max(1000).optional().or(z.literal('')),
-  notes: z.string().max(1000).optional().or(z.literal(''))
+  notes: z.string().optional().or(z.literal(''))
 });
 
 interface QuotationItem {
@@ -47,7 +95,7 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
     conditions: '',
     delivery_terms: '',
     delivery_details: '',
-    notes: ''
+    notes: DEFAULT_TERMS_CONDITIONS
   });
   const [items, setItems] = useState<QuotationItem[]>([]);
   const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
@@ -68,8 +116,12 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
     };
     if (open) {
       loadData();
-      // Reset validity_period to today when modal opens
-      setFormData(prev => ({ ...prev, validity_period: new Date().toISOString().split('T')[0] }));
+      // Reset validity_period and notes when modal opens
+      setFormData(prev => ({ 
+        ...prev, 
+        validity_period: new Date().toISOString().split('T')[0],
+        notes: DEFAULT_TERMS_CONDITIONS
+      }));
     }
   }, [open]);
 
@@ -196,7 +248,16 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
       onSuccess?.();
 
       // Reset form
-      setFormData({ customer_id: '', validity_period: '', payment_terms: '', customs_duty_status: '', conditions: '', delivery_terms: '', delivery_details: '', notes: '' });
+      setFormData({ 
+        customer_id: '', 
+        validity_period: '', 
+        payment_terms: '', 
+        customs_duty_status: '', 
+        conditions: '', 
+        delivery_terms: '', 
+        delivery_details: '', 
+        notes: DEFAULT_TERMS_CONDITIONS 
+      });
       setItems([]);
 
     } catch (error: any) {
@@ -398,13 +459,14 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">Terms & Conditions</Label>
             <Textarea
               id="notes"
-              rows={3}
+              rows={10}
               value={formData.notes}
               onChange={(e) => setFormData(p => ({ ...p, notes: e.target.value }))}
-              placeholder="Additional notes or terms"
+              placeholder="Terms and conditions"
+              className="font-mono text-sm"
             />
           </div>
 
