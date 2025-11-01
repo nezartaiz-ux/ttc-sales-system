@@ -95,7 +95,9 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
     conditions: '',
     delivery_terms: '',
     delivery_details: '',
-    notes: DEFAULT_TERMS_CONDITIONS
+    notes: DEFAULT_TERMS_CONDITIONS,
+    discount_type: 'percentage' as 'percentage' | 'fixed',
+    discount_value: 0
   });
   const [items, setItems] = useState<QuotationItem[]>([]);
   const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
@@ -164,9 +166,21 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
   };
 
   const calculateTotals = () => {
-    const total_amount = items.reduce((sum, item) => sum + item.total_price, 0);
+    const subtotal = items.reduce((sum, item) => sum + item.total_price, 0);
     
-    // Calculate tax based on customs duty status
+    // Apply discount
+    let discount_amount = 0;
+    if (formData.discount_value > 0) {
+      if (formData.discount_type === 'percentage') {
+        discount_amount = subtotal * (formData.discount_value / 100);
+      } else {
+        discount_amount = formData.discount_value;
+      }
+    }
+    
+    const total_amount = subtotal - discount_amount;
+    
+    // Calculate tax based on customs duty status (after discount)
     let taxRate = 0;
     if (formData.customs_duty_status === 'DDP Aden') {
       taxRate = 0.17; // 17%
@@ -177,7 +191,7 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
     
     const tax_amount = total_amount * taxRate;
     const grand_total = total_amount + tax_amount;
-    return { total_amount, tax_amount, grand_total, taxRate };
+    return { subtotal, discount_amount, total_amount, tax_amount, grand_total, taxRate };
   };
 
   const getTaxLabel = () => {
@@ -236,6 +250,8 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
         delivery_terms: formData.delivery_terms.trim() || null,
         delivery_details: formData.delivery_details.trim() || null,
         notes: formData.notes.trim() || null,
+        discount_type: formData.discount_value > 0 ? formData.discount_type : null,
+        discount_value: formData.discount_value > 0 ? formData.discount_value : null,
         created_by: user.id
       };
 
@@ -275,7 +291,9 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
         conditions: '', 
         delivery_terms: '', 
         delivery_details: '', 
-        notes: DEFAULT_TERMS_CONDITIONS 
+        notes: DEFAULT_TERMS_CONDITIONS,
+        discount_type: 'percentage',
+        discount_value: 0
       });
       setItems([]);
 
@@ -349,6 +367,37 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Discount Type</Label>
+              <Select value={formData.discount_type} onValueChange={(v: 'percentage' | 'fixed') => setFormData(p => ({ ...p, discount_type: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percentage">Percentage (%)</SelectItem>
+                  <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="discount_value">Discount Value</Label>
+              <Input
+                id="discount_value"
+                type="number"
+                min="0"
+                step={formData.discount_type === 'percentage' ? '0.01' : '0.01'}
+                max={formData.discount_type === 'percentage' ? '100' : undefined}
+                value={formData.discount_value}
+                onChange={(e) => setFormData(p => ({ ...p, discount_value: parseFloat(e.target.value) || 0 }))}
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="conditions">Conditions</Label>
               <Textarea
@@ -463,6 +512,16 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
                 <div className="space-y-2 text-right">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
+                    <span>${totals.subtotal.toFixed(2)}</span>
+                  </div>
+                  {totals.discount_amount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount ({formData.discount_type === 'percentage' ? `${formData.discount_value}%` : 'Fixed'}):</span>
+                      <span>-${totals.discount_amount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span>Total after Discount:</span>
                     <span>${totals.total_amount.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">

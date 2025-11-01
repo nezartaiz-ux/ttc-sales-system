@@ -347,6 +347,8 @@ export type Database = {
           customs_duty_status: string | null
           delivery_details: string | null
           delivery_terms: string | null
+          discount_type: string | null
+          discount_value: number | null
           grand_total: number
           id: string
           notes: string | null
@@ -366,6 +368,8 @@ export type Database = {
           customs_duty_status?: string | null
           delivery_details?: string | null
           delivery_terms?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           grand_total?: number
           id?: string
           notes?: string | null
@@ -385,6 +389,8 @@ export type Database = {
           customs_duty_status?: string | null
           delivery_details?: string | null
           delivery_terms?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           grand_total?: number
           id?: string
           notes?: string | null
@@ -465,6 +471,8 @@ export type Database = {
           created_by: string
           customer_id: string
           customs_duty_status: string | null
+          discount_type: string | null
+          discount_value: number | null
           due_date: string | null
           grand_total: number
           id: string
@@ -485,6 +493,8 @@ export type Database = {
           created_by: string
           customer_id: string
           customs_duty_status?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           due_date?: string | null
           grand_total?: number
           id?: string
@@ -505,6 +515,8 @@ export type Database = {
           created_by?: string
           customer_id?: string
           customs_duty_status?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           due_date?: string | null
           grand_total?: number
           id?: string

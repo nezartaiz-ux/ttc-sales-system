@@ -47,7 +47,9 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
     due_date: new Date().toISOString().split('T')[0], // Set to today's date
     customs_duty_status: '',
     conditions: '',
-    notes: ''
+    notes: '',
+    discount_type: 'percentage' as 'percentage' | 'fixed',
+    discount_value: 0
   });
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
@@ -115,9 +117,21 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
   };
 
   const calculateTotals = () => {
-    const total_amount = items.reduce((sum, item) => sum + item.total_price, 0);
+    const subtotal = items.reduce((sum, item) => sum + item.total_price, 0);
     
-    // Calculate tax based on customs duty status
+    // Apply discount
+    let discount_amount = 0;
+    if (formData.discount_value > 0) {
+      if (formData.discount_type === 'percentage') {
+        discount_amount = subtotal * (formData.discount_value / 100);
+      } else {
+        discount_amount = formData.discount_value;
+      }
+    }
+    
+    const total_amount = subtotal - discount_amount;
+    
+    // Calculate tax based on customs duty status (after discount)
     let taxRate = 0;
     if (formData.customs_duty_status === 'DDP Aden') {
       taxRate = 0.17; // 17%
@@ -128,7 +142,7 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
     
     const tax_amount = total_amount * taxRate;
     const grand_total = total_amount + tax_amount;
-    return { total_amount, tax_amount, grand_total, taxRate };
+    return { subtotal, discount_amount, total_amount, tax_amount, grand_total, taxRate };
   };
 
   const getTaxLabel = () => {
@@ -187,6 +201,8 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
         notes: formData.notes.trim() || null,
         customs_duty_status: formData.customs_duty_status || null,
         conditions: formData.conditions.trim() || null,
+        discount_type: formData.discount_value > 0 ? formData.discount_type : null,
+        discount_value: formData.discount_value > 0 ? formData.discount_value : null,
         created_by: user.id
       };
 
@@ -220,7 +236,8 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
       // Reset form
       setFormData({
         customer_id: '', purchase_order_id: '', invoice_type: 'cash',
-        payment_terms: 30, due_date: '', customs_duty_status: '', conditions: '', notes: ''
+        payment_terms: 30, due_date: '', customs_duty_status: '', conditions: '', notes: '',
+        discount_type: 'percentage', discount_value: 0
       });
       setItems([]);
 
@@ -352,6 +369,34 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Discount Type</Label>
+              <Select value={formData.discount_type} onValueChange={(v: 'percentage' | 'fixed') => setFormData(p => ({ ...p, discount_type: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percentage">Percentage (%)</SelectItem>
+                  <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="discount_value">Discount Value</Label>
+              <Input
+                id="discount_value"
+                type="number"
+                min="0"
+                step={formData.discount_type === 'percentage' ? '0.01' : '0.01'}
+                max={formData.discount_type === 'percentage' ? '100' : undefined}
+                value={formData.discount_value}
+                onChange={(e) => setFormData(p => ({ ...p, discount_value: parseFloat(e.target.value) || 0 }))}
+                placeholder="0"
+              />
+            </div>
+          </div>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Invoice Items</CardTitle>
@@ -435,6 +480,16 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
                 <div className="space-y-2 text-right">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
+                    <span>${totals.subtotal.toFixed(2)}</span>
+                  </div>
+                  {totals.discount_amount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount ({formData.discount_type === 'percentage' ? `${formData.discount_value}%` : 'Fixed'}):</span>
+                      <span>-${totals.discount_amount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span>Total after Discount:</span>
                     <span>${totals.total_amount.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
