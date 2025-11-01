@@ -54,33 +54,73 @@ const addReportFooter = (doc: jsPDF, pageNum: number, totalPages: number) => {
   );
 };
 
+// Helper function to generate report serial number
+const generateReportSerialNumber = (reportType: string) => {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const year = String(now.getFullYear()).slice(-2);
+  
+  // Generate a sequential number based on timestamp (simple approach)
+  const counter = String(now.getTime() % 10000).padStart(4, '0');
+  
+  let prefix = 'RP';
+  switch(reportType.toLowerCase()) {
+    case 'sales':
+      prefix = 'RP-Sales';
+      break;
+    case 'inventory':
+      prefix = 'RP-Inv';
+      break;
+    case 'purchase orders':
+    case 'purchase_orders':
+      prefix = 'RP-PO';
+      break;
+    case 'quotations':
+      prefix = 'RP-Quot';
+      break;
+    default:
+      prefix = 'RP-Gen';
+  }
+  
+  return `${prefix}-${counter}-${month}-${year}`;
+};
+
 export const generateReportPDF = (reportData: {
   title: string;
   dateRange?: string;
   headers: string[];
   rows: any[][];
   summary?: { label: string; value: string }[];
+  reportType?: string;
 }) => {
   const doc = new jsPDF();
+  
+  // Generate report serial number
+  const reportSerial = generateReportSerialNumber(reportData.reportType || reportData.title);
   
   // Add header with logo and company info
   addReportHeader(doc);
   
+  // Report serial number
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Report #: ${reportSerial}`, 14, 38);
+  
   // Title
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text(reportData.title, 14, 45);
+  doc.text(reportData.title, 14, 48);
   
   // Date range if provided
   if (reportData.dateRange) {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(reportData.dateRange, 14, 53);
+    doc.text(reportData.dateRange, 14, 56);
   }
   
   // Main table
   autoTable(doc, {
-    startY: reportData.dateRange ? 60 : 53,
+    startY: reportData.dateRange ? 63 : 56,
     head: [reportData.headers],
     body: reportData.rows,
     styles: { fontSize: 8 },
@@ -107,6 +147,6 @@ export const generateReportPDF = (reportData: {
     addReportFooter(doc, i, pageCount);
   }
   
-  const filename = `${reportData.title.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+  const filename = `${reportSerial}-${reportData.title.toLowerCase().replace(/\s+/g, '-')}.pdf`;
   doc.save(filename);
 };

@@ -1,20 +1,65 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Receipt, DollarSign, CreditCard } from "lucide-react";
+import { Plus, Receipt, DollarSign, CreditCard, Eye } from "lucide-react";
 import { CreateInvoiceModal } from "@/components/modals/CreateInvoiceModal";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 const SalesInvoices = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { isAdmin } = useUserRole();
   const { canCreate } = useUserPermissions();
   const { toast } = useToast();
 
   const canCreateInvoice = isAdmin || canCreate('sales_invoices');
+
+  const fetchInvoices = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('sales_invoices')
+        .select(`
+          *,
+          customers(name),
+          profiles(full_name)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setInvoices(data || []);
+    } catch (error: any) {
+      console.error('Error fetching invoices:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch invoices',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInvoices();
+  }, []);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'paid': return 'default';
+      case 'draft': return 'secondary';
+      case 'pending': return 'outline';
+      case 'cancelled': return 'destructive';
+      default: return 'secondary';
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -93,14 +138,57 @@ const SalesInvoices = () => {
         <Card>
           <CardHeader>
             <CardTitle>Invoice Management</CardTitle>
-            <CardDescription>Create, send, and track invoices</CardDescription>
+            <CardDescription>View and manage all sales invoices</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Invoice management features will be implemented here</p>
-              <p className="text-sm">Including invoice generation, payment tracking, and PDF export</p>
-            </div>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Loading invoices...</p>
+              </div>
+            ) : invoices.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No invoices yet</p>
+                <p className="text-sm">Create your first invoice to get started</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Invoice #</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created By</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoices.map((invoice) => (
+                    <TableRow key={invoice.id}>
+                      <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                      <TableCell>{invoice.customers?.name || 'N/A'}</TableCell>
+                      <TableCell className="capitalize">{invoice.invoice_type}</TableCell>
+                      <TableCell>${parseFloat(invoice.grand_total).toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusColor(invoice.status)}>
+                          {invoice.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{invoice.profiles?.full_name || 'N/A'}</TableCell>
+                      <TableCell>{new Date(invoice.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -109,7 +197,7 @@ const SalesInvoices = () => {
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
         onSuccess={() => {
-          // TODO: refresh invoices when implemented
+          fetchInvoices();
         }}
       />
     </DashboardLayout>

@@ -472,6 +472,7 @@ export type Database = {
           invoice_type: Database["public"]["Enums"]["invoice_type"]
           notes: string | null
           payment_terms: number | null
+          purchase_order_id: string | null
           quotation_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           tax_amount: number
@@ -491,6 +492,7 @@ export type Database = {
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
           notes?: string | null
           payment_terms?: number | null
+          purchase_order_id?: string | null
           quotation_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           tax_amount?: number
@@ -510,6 +512,7 @@ export type Database = {
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
           notes?: string | null
           payment_terms?: number | null
+          purchase_order_id?: string | null
           quotation_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           tax_amount?: number
@@ -532,6 +535,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sales_invoices_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sales_invoices_quotation_id_fkey"
             columns: ["quotation_id"]
             isOneToOne: false
@@ -539,6 +549,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      serial_number_counters: {
+        Row: {
+          counter: number
+          created_at: string | null
+          document_type: string
+          id: string
+          month: number
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          counter?: number
+          created_at?: string | null
+          document_type: string
+          id?: string
+          month: number
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          counter?: number
+          created_at?: string | null
+          document_type?: string
+          id?: string
+          month?: number
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: []
       }
       suppliers: {
         Row: {

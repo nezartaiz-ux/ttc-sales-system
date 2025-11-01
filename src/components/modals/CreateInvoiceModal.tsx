@@ -15,7 +15,7 @@ import { z } from 'zod';
 
 const invoiceSchema = z.object({
   customer_id: z.string().uuid('Select a valid customer'),
-  quotation_id: z.string().uuid().optional().or(z.literal('')),
+  purchase_order_id: z.string().uuid().optional().or(z.literal('')),
   invoice_type: z.enum(['cash', 'credit']),
   payment_terms: z.coerce.number().min(1).optional(),
   due_date: z.string().optional().or(z.literal('')),
@@ -41,7 +41,7 @@ interface CreateInvoiceModalProps {
 export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvoiceModalProps) => {
   const [formData, setFormData] = useState({
     customer_id: '',
-    quotation_id: '',
+    purchase_order_id: '',
     invoice_type: 'cash' as 'cash' | 'credit',
     payment_terms: 30,
     due_date: new Date().toISOString().split('T')[0], // Set to today's date
@@ -51,7 +51,7 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
   });
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
-  const [quotations, setQuotations] = useState<{ id: string; quotation_number: string; customer_id: string }[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [inventoryItems, setInventoryItems] = useState<{ id: string; name: string; selling_price: number }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -60,13 +60,13 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
 
   useEffect(() => {
     const loadData = async () => {
-      const [{ data: customers }, { data: quotations }, { data: inventory }] = await Promise.all([
+      const [{ data: customers }, { data: pos }, { data: inventory }] = await Promise.all([
         supabase.from('customers').select('id, name').eq('is_active', true).order('name'),
-        supabase.from('quotations').select('id, quotation_number, customer_id').eq('status', 'accepted').order('created_at'),
+        supabase.from('purchase_orders').select('*, supplier_id, suppliers(name), purchase_order_items(*, inventory_items(*))').order('created_at', { ascending: false }),
         supabase.from('inventory_items').select('id, name, selling_price').eq('is_active', true).order('name')
       ]);
       setCustomers(customers || []);
-      setQuotations(quotations || []);
+      setPurchaseOrders(pos || []);
       setInventoryItems(inventory || []);
     };
     if (open) {
@@ -177,7 +177,7 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
       const invoiceData = {
         invoice_number,
         customer_id: formData.customer_id,
-        quotation_id: formData.quotation_id || null,
+        purchase_order_id: formData.purchase_order_id || null,
         invoice_type: formData.invoice_type,
         payment_terms: formData.invoice_type === 'credit' ? formData.payment_terms : null,
         due_date: formData.due_date || null,
@@ -219,7 +219,7 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
 
       // Reset form
       setFormData({
-        customer_id: '', quotation_id: '', invoice_type: 'cash',
+        customer_id: '', purchase_order_id: '', invoice_type: 'cash',
         payment_terms: 30, due_date: '', customs_duty_status: '', conditions: '', notes: ''
       });
       setItems([]);
@@ -232,7 +232,6 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
   };
 
   const totals = calculateTotals();
-  const filteredQuotations = quotations.filter(q => q.customer_id === formData.customer_id);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -246,7 +245,7 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Customer *</Label>
-              <Select value={formData.customer_id} onValueChange={(v) => setFormData(p => ({ ...p, customer_id: v, quotation_id: '' }))}>
+              <Select value={formData.customer_id} onValueChange={(v) => setFormData(p => ({ ...p, customer_id: v, purchase_order_id: '' }))}>
                 <SelectTrigger className={errors.customer_id ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select customer" />
                 </SelectTrigger>
@@ -260,14 +259,30 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
             </div>
 
             <div className="space-y-2">
-              <Label>From Quotation (Optional)</Label>
-              <Select value={formData.quotation_id} onValueChange={(v) => setFormData(p => ({ ...p, quotation_id: v }))}>
+              <Label>Import from Purchase Order (Optional)</Label>
+              <Select value={formData.purchase_order_id} onValueChange={(v) => {
+                setFormData(p => ({ ...p, purchase_order_id: v }));
+                // Auto-populate items from PO
+                const selectedPO = purchaseOrders.find(po => po.id === v);
+                if (selectedPO && selectedPO.purchase_order_items) {
+                  const poItems = selectedPO.purchase_order_items.map((pi: any) => ({
+                    inventory_item_id: pi.inventory_item_id,
+                    item_name: pi.inventory_items?.name || '',
+                    quantity: pi.quantity,
+                    unit_price: pi.inventory_items?.selling_price || pi.unit_price,
+                    total_price: pi.quantity * (pi.inventory_items?.selling_price || pi.unit_price)
+                  }));
+                  setItems(poItems);
+                }
+              }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select quotation" />
+                  <SelectValue placeholder="Select purchase order" />
                 </SelectTrigger>
                 <SelectContent>
-                  {filteredQuotations.map((q) => (
-                    <SelectItem key={q.id} value={q.id}>{q.quotation_number}</SelectItem>
+                  {purchaseOrders.map((po) => (
+                    <SelectItem key={po.id} value={po.id}>
+                      {po.order_number} - {po.suppliers?.name || 'N/A'}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

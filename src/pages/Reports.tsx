@@ -121,11 +121,20 @@ const Reports = () => {
       if (data && data.length > 0) {
         const headers = Object.keys(data[0]);
         const rows = data.map(row => headers.map(h => String((row as any)[h] || '')));
+        
+        // Map report types to match serial number formats
+        let reportType = customReportType;
+        if (customReportType === 'sales') reportType = 'sales';
+        else if (customReportType === 'inventory') reportType = 'inventory';
+        else if (customReportType === 'purchase-orders') reportType = 'purchase_orders';
+        else if (customReportType === 'quotations') reportType = 'quotations';
+        
         generateReportPDF({
           title: `${customReportType.toUpperCase()} Report`,
           dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
           headers,
-          rows
+          rows,
+          reportType
         });
         toast({ title: 'Success', description: 'PDF report generated' });
       }
