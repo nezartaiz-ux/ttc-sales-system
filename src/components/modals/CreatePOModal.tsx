@@ -16,6 +16,7 @@ import { z } from 'zod';
 const purchaseOrderSchema = z.object({
   supplier_id: z.string().uuid('Select a valid supplier'),
   expected_delivery_date: z.string().min(1, 'Expected delivery date is required'),
+  customs_duty_status: z.enum(['CIF Aden Freezone','DDP Aden','DDP Sana\'a']).optional().or(z.literal('')),
   notes: z.string().max(1000).optional().or(z.literal(''))
 });
 
@@ -37,6 +38,7 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
   const [formData, setFormData] = useState({
     supplier_id: '',
     expected_delivery_date: new Date().toISOString().split('T')[0], // Set to today's date
+    customs_duty_status: '',
     notes: ''
   });
   const [items, setItems] = useState<POItem[]>([]);
@@ -141,9 +143,28 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
 
   const calculateTotals = () => {
     const total_amount = items.reduce((sum, item) => sum + item.total_price, 0);
-    const tax_amount = total_amount * 0.15; // 15% tax
+    
+    // Calculate tax based on customs duty status
+    let taxRate = 0;
+    if (formData.customs_duty_status === 'DDP Aden') {
+      taxRate = 0.17; // 17%
+    } else if (formData.customs_duty_status === 'DDP Sana\'a') {
+      taxRate = 0.21; // 21%
+    }
+    // CIF Aden Freezone = 0%
+    
+    const tax_amount = total_amount * taxRate;
     const grand_total = total_amount + tax_amount;
-    return { total_amount, tax_amount, grand_total };
+    return { total_amount, tax_amount, grand_total, taxRate };
+  };
+
+  const getTaxLabel = () => {
+    if (formData.customs_duty_status === 'DDP Aden') {
+      return 'Tax (17%)';
+    } else if (formData.customs_duty_status === 'DDP Sana\'a') {
+      return 'Tax (21%)';
+    }
+    return 'Tax (0%)';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -187,6 +208,7 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
         tax_amount,
         grand_total,
         expected_delivery_date: formData.expected_delivery_date,
+        customs_duty_status: formData.customs_duty_status || null,
         notes: formData.notes.trim() || null,
         created_by: user.id
       };
@@ -219,7 +241,7 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
       onSuccess?.();
 
       // Reset form
-      setFormData({ supplier_id: '', expected_delivery_date: '', notes: '' });
+      setFormData({ supplier_id: '', expected_delivery_date: '', customs_duty_status: '', notes: '' });
       setItems([]);
 
     } catch (error: any) {
@@ -267,6 +289,20 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
               />
               {errors.expected_delivery_date && <p className="text-sm text-destructive">{errors.expected_delivery_date}</p>}
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Customs Duty Status</Label>
+            <Select value={formData.customs_duty_status} onValueChange={(v) => setFormData(p => ({ ...p, customs_duty_status: v }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select customs duty status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CIF Aden Freezone">CIF Aden Freezone (0% Tax)</SelectItem>
+                <SelectItem value="DDP Aden">DDP Aden (17% Tax)</SelectItem>
+                <SelectItem value="DDP Sana'a">DDP Sana'a (21% Tax)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <Card>
@@ -377,7 +413,7 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
                     <span>${totals.total_amount.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Tax (15%):</span>
+                    <span>{getTaxLabel()}:</span>
                     <span>${totals.tax_amount.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg">
