@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,31 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { exportToCSV } from "@/utils/csvExport";
 import { generateReportPDF } from "@/utils/reportPdfExport";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Reports = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [customReportType, setCustomReportType] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [userFullName, setUserFullName] = useState<string>('');
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Fetch user's full name
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', user.id)
+          .single();
+        if (data) setUserFullName(data.full_name);
+      }
+    };
+    fetchUserInfo();
+  }, [user]);
 
   const handleExportAll = async () => {
     setIsExporting(true);
@@ -134,7 +152,8 @@ const Reports = () => {
           dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
           headers,
           rows,
-          reportType
+          reportType,
+          created_by_name: userFullName || 'N/A'
         });
         toast({ title: 'Success', description: 'PDF report generated' });
       }

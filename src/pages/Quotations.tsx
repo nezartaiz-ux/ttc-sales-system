@@ -62,7 +62,8 @@ const Quotations = () => {
         unit_price: item.unit_price,
         total_price: item.total_price
       })) || [],
-      notes: quotation.notes
+      notes: quotation.notes,
+      created_by_name: quotation.profiles?.full_name || 'N/A'
     });
   };
 
@@ -80,7 +81,8 @@ const Quotations = () => {
         unit_price: item.unit_price,
         total_price: item.total_price
       })) || [],
-      notes: quotation.notes
+      notes: quotation.notes,
+      created_by_name: quotation.profiles?.full_name || 'N/A'
     });
   };
 

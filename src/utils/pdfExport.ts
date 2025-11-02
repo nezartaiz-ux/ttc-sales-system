@@ -63,6 +63,7 @@ interface QuotationData {
     total_price: number;
   }>;
   notes?: string;
+  created_by_name?: string;
 }
 
 interface POData {
@@ -79,6 +80,7 @@ interface POData {
     total_price: number;
   }>;
   notes?: string;
+  created_by_name?: string;
 }
 
 export const generateQuotationPDF = (data: QuotationData) => {
@@ -101,10 +103,13 @@ export const generateQuotationPDF = (data: QuotationData) => {
   doc.text(`Quotation #: ${data.quotation_number}`, 14, 58);
   doc.text(`Customer: ${data.customer_name}`, 14, 65);
   doc.text(`Valid Until: ${data.validity_period}`, 14, 72);
+  if (data.created_by_name) {
+    doc.text(`Created by: ${data.created_by_name}`, 14, 79);
+  }
   
   // Items table
   autoTable(doc, {
-    startY: 80,
+    startY: data.created_by_name ? 87 : 80,
     head: [['Item', 'Quantity', 'Unit Price', 'Total']],
     body: data.items.map(item => [
       item.name,
@@ -178,10 +183,13 @@ export const generatePOPDF = (data: POData) => {
   doc.text(`PO #: ${data.order_number}`, 14, 58);
   doc.text(`Supplier: ${data.supplier_name}`, 14, 65);
   doc.text(`Expected Delivery: ${data.expected_delivery_date}`, 14, 72);
+  if (data.created_by_name) {
+    doc.text(`Created by: ${data.created_by_name}`, 14, 79);
+  }
   
   // Items table
   autoTable(doc, {
-    startY: 80,
+    startY: data.created_by_name ? 87 : 80,
     head: [['Item', 'Quantity', 'Unit Price', 'Total']],
     body: data.items.map(item => [
       item.name,
@@ -275,6 +283,7 @@ export const printQuotation = (data: QuotationData) => {
           <p><strong>Quotation #:</strong> ${data.quotation_number}</p>
           <p><strong>Customer:</strong> ${data.customer_name}</p>
           <p><strong>Valid Until:</strong> ${data.validity_period}</p>
+          ${data.created_by_name ? `<p><strong>Created by:</strong> ${data.created_by_name}</p>` : ''}
         </div>
         <table>
           <thead>
@@ -355,6 +364,7 @@ export const printPO = (data: POData) => {
           <p><strong>PO #:</strong> ${data.order_number}</p>
           <p><strong>Supplier:</strong> ${data.supplier_name}</p>
           <p><strong>Expected Delivery:</strong> ${data.expected_delivery_date}</p>
+          ${data.created_by_name ? `<p><strong>Created by:</strong> ${data.created_by_name}</p>` : ''}
         </div>
         <table>
           <thead>

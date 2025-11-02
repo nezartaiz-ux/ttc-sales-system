@@ -62,7 +62,8 @@ const PurchaseOrders = () => {
         unit_price: item.unit_price,
         total_price: item.total_price
       })) || [],
-      notes: po.notes
+      notes: po.notes,
+      created_by_name: po.profiles?.full_name || 'N/A'
     });
   };
 
@@ -80,7 +81,8 @@ const PurchaseOrders = () => {
         unit_price: item.unit_price,
         total_price: item.total_price
       })) || [],
-      notes: po.notes
+      notes: po.notes,
+      created_by_name: po.profiles?.full_name || 'N/A'
     });
   };
 
