@@ -3,7 +3,8 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, FileText, Clock, CheckCircle, Eye, Download, Printer } from "lucide-react";
+import { Plus, FileText, Clock, CheckCircle, Eye, Download, Printer, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CreateQuotationModal } from "@/components/modals/CreateQuotationModal";
 import { ViewQuotationModal } from "@/components/modals/ViewQuotationModal";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -18,8 +19,10 @@ const Quotations = () => {
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
   const [quotations, setQuotations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [quotationToDelete, setQuotationToDelete] = useState<any>(null);
   const { isAdmin } = useUserRole();
-  const { canCreate, canView } = useUserPermissions();
+  const { canCreate, canView, canDelete } = useUserPermissions();
   const { toast } = useToast();
 
   const fetchQuotations = async () => {
@@ -79,6 +82,36 @@ const Quotations = () => {
       })) || [],
       notes: quotation.notes
     });
+  };
+
+  const handleDeleteClick = (quotation: any) => {
+    if (!isAdmin && !canDelete('quotations')) {
+      toast({ title: 'Permission denied', description: 'You do not have permission to delete quotations.', variant: 'destructive' });
+      return;
+    }
+    setQuotationToDelete(quotation);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!quotationToDelete) return;
+    
+    try {
+      const { error } = await supabase
+        .from('quotations')
+        .delete()
+        .eq('id', quotationToDelete.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Success', description: 'Quotation deleted successfully' });
+      fetchQuotations();
+    } catch (error: any) {
+      toast({ title: 'Error', description: `Failed to delete quotation: ${error.message}`, variant: 'destructive' });
+    } finally {
+      setDeleteDialogOpen(false);
+      setQuotationToDelete(null);
+    }
   };
 
   return (
@@ -211,6 +244,14 @@ const Quotations = () => {
                             <Button size="sm" variant="outline" onClick={() => handlePrint(quotation)}>
                               <Printer className="h-4 w-4" />
                             </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => handleDeleteClick(quotation)}
+                              disabled={!isAdmin && !canDelete('quotations')}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -233,6 +274,23 @@ const Quotations = () => {
         onOpenChange={setIsViewModalOpen}
         quotation={selectedQuotation}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Quotation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete quotation {quotationToDelete?.quotation_number}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };

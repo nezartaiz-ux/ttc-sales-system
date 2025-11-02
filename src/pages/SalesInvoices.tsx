@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Receipt, DollarSign, CreditCard, Eye } from "lucide-react";
+import { Plus, Receipt, DollarSign, CreditCard, Eye, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CreateInvoiceModal } from "@/components/modals/CreateInvoiceModal";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
@@ -15,8 +16,10 @@ const SalesInvoices = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<any>(null);
   const { isAdmin } = useUserRole();
-  const { canCreate } = useUserPermissions();
+  const { canCreate, canDelete } = useUserPermissions();
   const { toast } = useToast();
 
   const canCreateInvoice = isAdmin || canCreate('sales_invoices');
@@ -58,6 +61,36 @@ const SalesInvoices = () => {
       case 'pending': return 'outline';
       case 'cancelled': return 'destructive';
       default: return 'secondary';
+    }
+  };
+
+  const handleDeleteClick = (invoice: any) => {
+    if (!isAdmin && !canDelete('sales_invoices')) {
+      toast({ title: 'Permission denied', description: 'You do not have permission to delete invoices.', variant: 'destructive' });
+      return;
+    }
+    setInvoiceToDelete(invoice);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!invoiceToDelete) return;
+    
+    try {
+      const { error } = await supabase
+        .from('sales_invoices')
+        .delete()
+        .eq('id', invoiceToDelete.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Success', description: 'Invoice deleted successfully' });
+      fetchInvoices();
+    } catch (error: any) {
+      toast({ title: 'Error', description: `Failed to delete invoice: ${error.message}`, variant: 'destructive' });
+    } finally {
+      setDeleteDialogOpen(false);
+      setInvoiceToDelete(null);
     }
   };
 
@@ -180,9 +213,19 @@ const SalesInvoices = () => {
                       <TableCell>{invoice.profiles?.full_name || 'N/A'}</TableCell>
                       <TableCell>{new Date(invoice.created_at).toLocaleDateString()}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="icon">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleDeleteClick(invoice)}
+                            disabled={!isAdmin && !canDelete('sales_invoices')}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -200,6 +243,23 @@ const SalesInvoices = () => {
           fetchInvoices();
         }}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Invoice</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete invoice {invoiceToDelete?.invoice_number}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };

@@ -3,7 +3,8 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, ShoppingCart, Truck, Package, Eye, Download, Printer } from "lucide-react";
+import { Plus, ShoppingCart, Truck, Package, Eye, Download, Printer, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CreatePOModal } from "@/components/modals/CreatePOModal";
 import { ViewPOModal } from "@/components/modals/ViewPOModal";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -18,8 +19,10 @@ const PurchaseOrders = () => {
   const [selectedPO, setSelectedPO] = useState<any>(null);
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [poToDelete, setPoToDelete] = useState<any>(null);
   const { isAdmin } = useUserRole();
-  const { canCreate, canView } = useUserPermissions();
+  const { canCreate, canView, canDelete } = useUserPermissions();
   const { toast } = useToast();
 
   const fetchPurchaseOrders = async () => {
@@ -79,6 +82,36 @@ const PurchaseOrders = () => {
       })) || [],
       notes: po.notes
     });
+  };
+
+  const handleDeleteClick = (po: any) => {
+    if (!isAdmin && !canDelete('purchase_orders')) {
+      toast({ title: 'Permission denied', description: 'You do not have permission to delete purchase orders.', variant: 'destructive' });
+      return;
+    }
+    setPoToDelete(po);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!poToDelete) return;
+    
+    try {
+      const { error } = await supabase
+        .from('purchase_orders')
+        .delete()
+        .eq('id', poToDelete.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Success', description: 'Purchase order deleted successfully' });
+      fetchPurchaseOrders();
+    } catch (error: any) {
+      toast({ title: 'Error', description: `Failed to delete purchase order: ${error.message}`, variant: 'destructive' });
+    } finally {
+      setDeleteDialogOpen(false);
+      setPoToDelete(null);
+    }
   };
 
   return (
@@ -212,6 +245,14 @@ const PurchaseOrders = () => {
                             <Button size="sm" variant="outline" onClick={() => handlePrint(po)}>
                               <Printer className="h-4 w-4" />
                             </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => handleDeleteClick(po)}
+                              disabled={!isAdmin && !canDelete('purchase_orders')}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -234,6 +275,23 @@ const PurchaseOrders = () => {
         onOpenChange={setIsViewModalOpen}
         purchaseOrder={selectedPO}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Purchase Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete purchase order {poToDelete?.order_number}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
