@@ -64,6 +64,8 @@ interface QuotationData {
   }>;
   notes?: string;
   created_by_name?: string;
+  discount_type?: string;
+  discount_value?: number;
 }
 
 interface POData {
@@ -99,6 +101,8 @@ interface InvoiceData {
   }>;
   notes?: string;
   created_by_name?: string;
+  discount_type?: string;
+  discount_value?: number;
 }
 
 export const generateQuotationPDF = (data: QuotationData) => {
@@ -126,6 +130,23 @@ export const generateQuotationPDF = (data: QuotationData) => {
   }
   
   // Items table
+  const footRows: any[] = [['', '', 'Subtotal:', `$${data.total_amount.toFixed(2)}`]];
+  
+  if (data.discount_value && data.discount_value > 0) {
+    const discountLabel = data.discount_type === 'percentage' 
+      ? `Discount (${data.discount_value}%):`
+      : 'Discount:';
+    const discountAmount = data.discount_type === 'percentage'
+      ? (data.total_amount * data.discount_value / 100)
+      : data.discount_value;
+    footRows.push(['', '', discountLabel, `-$${discountAmount.toFixed(2)}`]);
+  }
+  
+  footRows.push(
+    ['', '', 'Tax:', `$${data.tax_amount.toFixed(2)}`],
+    ['', '', 'Grand Total:', `$${data.grand_total.toFixed(2)}`]
+  );
+  
   autoTable(doc, {
     startY: data.created_by_name ? 87 : 80,
     head: [['Item', 'Quantity', 'Unit Price', 'Total']],
@@ -135,11 +156,7 @@ export const generateQuotationPDF = (data: QuotationData) => {
       `$${item.unit_price.toFixed(2)}`,
       `$${item.total_price.toFixed(2)}`
     ]),
-    foot: [
-      ['', '', 'Subtotal:', `$${data.total_amount.toFixed(2)}`],
-      ['', '', 'Tax:', `$${data.tax_amount.toFixed(2)}`],
-      ['', '', 'Grand Total:', `$${data.grand_total.toFixed(2)}`]
-    ],
+    foot: footRows,
     showFoot: 'lastPage',
     margin: { bottom: marginBottom }
   });
@@ -325,6 +342,9 @@ export const printQuotation = (data: QuotationData) => {
         </table>
         <div class="totals">
           <p><strong>Subtotal:</strong> $${data.total_amount.toFixed(2)}</p>
+          ${data.discount_value && data.discount_value > 0 ? `
+            <p><strong>${data.discount_type === 'percentage' ? `Discount (${data.discount_value}%):` : 'Discount:'}</strong> -$${(data.discount_type === 'percentage' ? data.total_amount * data.discount_value / 100 : data.discount_value).toFixed(2)}</p>
+          ` : ''}
           <p><strong>Tax:</strong> $${data.tax_amount.toFixed(2)}</p>
           <p><strong>Grand Total:</strong> $${data.grand_total.toFixed(2)}</p>
         </div>

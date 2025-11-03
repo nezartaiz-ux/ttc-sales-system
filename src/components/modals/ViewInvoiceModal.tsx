@@ -22,9 +22,16 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice }: ViewInvoiceMod
       total_amount: invoice.total_amount || 0,
       tax_amount: invoice.tax_amount || 0,
       grand_total: invoice.grand_total || 0,
-      items: invoice.sales_invoice_items || [],
+      items: invoice.sales_invoice_items?.map((item: any) => ({
+        name: item.inventory_items?.name || 'N/A',
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_price: item.total_price
+      })) || [],
       notes: invoice.notes,
-      created_by_name: invoice.profiles?.full_name
+      created_by_name: invoice.profiles?.full_name,
+      discount_type: invoice.discount_type,
+      discount_value: invoice.discount_value
     });
   };
 
@@ -37,9 +44,16 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice }: ViewInvoiceMod
       total_amount: invoice.total_amount || 0,
       tax_amount: invoice.tax_amount || 0,
       grand_total: invoice.grand_total || 0,
-      items: invoice.sales_invoice_items || [],
+      items: invoice.sales_invoice_items?.map((item: any) => ({
+        name: item.inventory_items?.name || 'N/A',
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_price: item.total_price
+      })) || [],
       notes: invoice.notes,
-      created_by_name: invoice.profiles?.full_name
+      created_by_name: invoice.profiles?.full_name,
+      discount_type: invoice.discount_type,
+      discount_value: invoice.discount_value
     });
   };
 

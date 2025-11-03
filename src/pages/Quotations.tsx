@@ -63,7 +63,9 @@ const Quotations = () => {
         total_price: item.total_price
       })) || [],
       notes: quotation.notes,
-      created_by_name: quotation.profiles?.full_name || 'N/A'
+      created_by_name: quotation.profiles?.full_name || 'N/A',
+      discount_type: quotation.discount_type,
+      discount_value: quotation.discount_value
     });
   };
 
@@ -82,7 +84,9 @@ const Quotations = () => {
         total_price: item.total_price
       })) || [],
       notes: quotation.notes,
-      created_by_name: quotation.profiles?.full_name || 'N/A'
+      created_by_name: quotation.profiles?.full_name || 'N/A',
+      discount_type: quotation.discount_type,
+      discount_value: quotation.discount_value
     });
   };
 
