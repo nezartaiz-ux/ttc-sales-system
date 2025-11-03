@@ -36,6 +36,50 @@ const addPDFHeader = (doc: jsPDF, isCat: boolean = true) => {
   return 30; // Return Y position where content should start
 };
 
+// Helper function to convert number to words
+const numberToWords = (num: number): string => {
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+  const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  const thousands = ['', 'Thousand', 'Million', 'Billion'];
+
+  if (num === 0) return 'Zero';
+
+  const convertLessThanThousand = (n: number): string => {
+    if (n === 0) return '';
+    if (n < 10) return ones[n];
+    if (n < 20) return teens[n - 10];
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + ones[n % 10] : '');
+    return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 !== 0 ? ' ' + convertLessThanThousand(n % 100) : '');
+  };
+
+  let word = '';
+  let i = 0;
+  
+  while (num > 0) {
+    if (num % 1000 !== 0) {
+      word = convertLessThanThousand(num % 1000) + (thousands[i] !== '' ? ' ' + thousands[i] : '') + (word !== '' ? ' ' + word : '');
+    }
+    num = Math.floor(num / 1000);
+    i++;
+  }
+
+  return word.trim();
+};
+
+const amountToWords = (amount: number): string => {
+  const dollars = Math.floor(amount);
+  const cents = Math.round((amount - dollars) * 100);
+  
+  let result = numberToWords(dollars) + ' Dollar' + (dollars !== 1 ? 's' : '');
+  
+  if (cents > 0) {
+    result += ' and ' + numberToWords(cents) + ' Cent' + (cents !== 1 ? 's' : '');
+  }
+  
+  return result;
+};
+
 // Helper function to add footer
 const addPDFFooter = (doc: jsPDF) => {
   const pageHeight = doc.internal.pageSize.height;
@@ -129,17 +173,22 @@ export const generateQuotationPDF = (data: QuotationData) => {
     doc.text(`Created by: ${data.created_by_name}`, 14, 79);
   }
   
-  // Items table
-  const footRows: any[] = [['', '', 'Subtotal:', `$${data.total_amount.toFixed(2)}`]];
+  // Items table - Calculate amounts
+  const discountAmount = (data.discount_value && data.discount_value > 0)
+    ? (data.discount_type === 'percentage'
+      ? (data.total_amount * data.discount_value / 100)
+      : data.discount_value)
+    : 0;
+  const netAmount = data.total_amount - discountAmount;
+  
+  const footRows: any[] = [['', '', 'Value:', `$${data.total_amount.toFixed(2)}`]];
   
   if (data.discount_value && data.discount_value > 0) {
     const discountLabel = data.discount_type === 'percentage' 
-      ? `Discount (${data.discount_value}%):`
-      : 'Discount:';
-    const discountAmount = data.discount_type === 'percentage'
-      ? (data.total_amount * data.discount_value / 100)
-      : data.discount_value;
+      ? `Given Discount (${data.discount_value}%):`
+      : 'Given Discount:';
     footRows.push(['', '', discountLabel, `-$${discountAmount.toFixed(2)}`]);
+    footRows.push(['', '', 'Net Amount:', `$${netAmount.toFixed(2)}`]);
   }
   
   footRows.push(
@@ -161,9 +210,22 @@ export const generateQuotationPDF = (data: QuotationData) => {
     margin: { bottom: marginBottom }
   });
   
+  // Add amount in words
+  let currentY = (doc as any).lastAutoTable.finalY + 10;
+  if (currentY > pageHeight - marginBottom - 20) {
+    doc.addPage();
+    addPDFHeader(doc, true);
+    currentY = 40;
+  }
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Amount in Words:', 14, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(amountToWords(data.grand_total), 14, currentY + 6);
+  
   // Notes with proper multi-line handling
   if (data.notes) {
-    let currentY = (doc as any).lastAutoTable.finalY + 10;
+    let currentY = (doc as any).lastAutoTable.finalY + 20;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('Terms & Conditions:', 14, currentY);
@@ -341,12 +403,49 @@ export const printQuotation = (data: QuotationData) => {
           </tbody>
         </table>
         <div class="totals">
-          <p><strong>Subtotal:</strong> $${data.total_amount.toFixed(2)}</p>
+          <p><strong>Value:</strong> $${data.total_amount.toFixed(2)}</p>
           ${data.discount_value && data.discount_value > 0 ? `
-            <p><strong>${data.discount_type === 'percentage' ? `Discount (${data.discount_value}%):` : 'Discount:'}</strong> -$${(data.discount_type === 'percentage' ? data.total_amount * data.discount_value / 100 : data.discount_value).toFixed(2)}</p>
+            <p><strong>${data.discount_type === 'percentage' ? `Given Discount (${data.discount_value}%):` : 'Given Discount:'}</strong> -$${(data.discount_type === 'percentage' ? data.total_amount * data.discount_value / 100 : data.discount_value).toFixed(2)}</p>
+            <p><strong>Net Amount:</strong> $${(data.total_amount - (data.discount_type === 'percentage' ? data.total_amount * data.discount_value / 100 : data.discount_value)).toFixed(2)}</p>
           ` : ''}
           <p><strong>Tax:</strong> $${data.tax_amount.toFixed(2)}</p>
           <p><strong>Grand Total:</strong> $${data.grand_total.toFixed(2)}</p>
+        </div>
+        <div style="margin-top: 20px;">
+          <p><strong>Amount in Words:</strong> ${(() => {
+            const dollars = Math.floor(data.grand_total);
+            const cents = Math.round((data.grand_total - dollars) * 100);
+            const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+            const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+            const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+            const thousands = ['', 'Thousand', 'Million'];
+            
+            const convertLessThanThousand = (n) => {
+              if (n === 0) return '';
+              if (n < 10) return ones[n];
+              if (n < 20) return teens[n - 10];
+              if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + ones[n % 10] : '');
+              return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 !== 0 ? ' ' + convertLessThanThousand(n % 100) : '');
+            };
+            
+            let word = '';
+            let i = 0;
+            let num = dollars;
+            
+            while (num > 0) {
+              if (num % 1000 !== 0) {
+                word = convertLessThanThousand(num % 1000) + (thousands[i] !== '' ? ' ' + thousands[i] : '') + (word !== '' ? ' ' + word : '');
+              }
+              num = Math.floor(num / 1000);
+              i++;
+            }
+            
+            let result = (word || 'Zero') + ' Dollar' + (dollars !== 1 ? 's' : '');
+            if (cents > 0) {
+              result += ' and ' + convertLessThanThousand(cents) + ' Cent' + (cents !== 1 ? 's' : '');
+            }
+            return result.trim();
+          })()}</p>
         </div>
         ${data.notes ? `<div class="notes"><strong>Terms & Conditions:</strong><br/>${data.notes.replace(/\n/g, '<br/>')}</div>` : ''}
         <div class="footer">
@@ -468,7 +567,29 @@ export const generateInvoicePDF = (data: InvoiceData) => {
     doc.text(`Created by: ${data.created_by_name}`, 14, 86);
   }
   
-  // Items table
+  // Items table - Calculate amounts
+  const invoiceDiscountAmount = (data.discount_value && data.discount_value > 0)
+    ? (data.discount_type === 'percentage'
+      ? (data.total_amount * data.discount_value / 100)
+      : data.discount_value)
+    : 0;
+  const invoiceNetAmount = data.total_amount - invoiceDiscountAmount;
+  
+  const invoiceFootRows: any[] = [['', '', 'Value:', `$${data.total_amount.toFixed(2)}`]];
+  
+  if (data.discount_value && data.discount_value > 0) {
+    const discountLabel = data.discount_type === 'percentage' 
+      ? `Given Discount (${data.discount_value}%):`
+      : 'Given Discount:';
+    invoiceFootRows.push(['', '', discountLabel, `-$${invoiceDiscountAmount.toFixed(2)}`]);
+    invoiceFootRows.push(['', '', 'Net Amount:', `$${invoiceNetAmount.toFixed(2)}`]);
+  }
+  
+  invoiceFootRows.push(
+    ['', '', 'Tax:', `$${data.tax_amount.toFixed(2)}`],
+    ['', '', 'Grand Total:', `$${data.grand_total.toFixed(2)}`]
+  );
+  
   autoTable(doc, {
     startY: data.created_by_name ? 94 : 87,
     head: [['Item', 'Quantity', 'Unit Price', 'Total']],
@@ -478,18 +599,27 @@ export const generateInvoicePDF = (data: InvoiceData) => {
       `$${item.unit_price.toFixed(2)}`,
       `$${item.total_price.toFixed(2)}`
     ]),
-    foot: [
-      ['', '', 'Subtotal:', `$${data.total_amount.toFixed(2)}`],
-      ['', '', 'Tax:', `$${data.tax_amount.toFixed(2)}`],
-      ['', '', 'Grand Total:', `$${data.grand_total.toFixed(2)}`]
-    ],
+    foot: invoiceFootRows,
     showFoot: 'lastPage',
     margin: { bottom: marginBottom }
   });
   
+  // Add amount in words
+  let invoiceCurrentY = (doc as any).lastAutoTable.finalY + 10;
+  if (invoiceCurrentY > pageHeight - marginBottom - 20) {
+    doc.addPage();
+    addPDFHeader(doc, true);
+    invoiceCurrentY = 40;
+  }
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Amount in Words:', 14, invoiceCurrentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(amountToWords(data.grand_total), 14, invoiceCurrentY + 6);
+  
   // Notes with proper multi-line handling
   if (data.notes) {
-    let currentY = (doc as any).lastAutoTable.finalY + 10;
+    let currentY = invoiceCurrentY + 20;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('Notes:', 14, currentY);
@@ -588,9 +718,49 @@ export const printInvoice = (data: InvoiceData) => {
           </tbody>
         </table>
         <div class="totals">
-          <p><strong>Subtotal:</strong> $${data.total_amount.toFixed(2)}</p>
+          <p><strong>Value:</strong> $${data.total_amount.toFixed(2)}</p>
+          ${data.discount_value && data.discount_value > 0 ? `
+            <p><strong>${data.discount_type === 'percentage' ? `Given Discount (${data.discount_value}%):` : 'Given Discount:'}</strong> -$${(data.discount_type === 'percentage' ? data.total_amount * data.discount_value / 100 : data.discount_value).toFixed(2)}</p>
+            <p><strong>Net Amount:</strong> $${(data.total_amount - (data.discount_type === 'percentage' ? data.total_amount * data.discount_value / 100 : data.discount_value)).toFixed(2)}</p>
+          ` : ''}
           <p><strong>Tax:</strong> $${data.tax_amount.toFixed(2)}</p>
           <p><strong>Grand Total:</strong> $${data.grand_total.toFixed(2)}</p>
+        </div>
+        <div style="margin-top: 20px; margin-bottom: 60px;">
+          <p><strong>Amount in Words:</strong> ${(() => {
+            const dollars = Math.floor(data.grand_total);
+            const cents = Math.round((data.grand_total - dollars) * 100);
+            const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+            const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+            const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+            const thousands = ['', 'Thousand', 'Million'];
+            
+            const convertLessThanThousand = (n) => {
+              if (n === 0) return '';
+              if (n < 10) return ones[n];
+              if (n < 20) return teens[n - 10];
+              if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + ones[n % 10] : '');
+              return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 !== 0 ? ' ' + convertLessThanThousand(n % 100) : '');
+            };
+            
+            let word = '';
+            let i = 0;
+            let num = dollars;
+            
+            while (num > 0) {
+              if (num % 1000 !== 0) {
+                word = convertLessThanThousand(num % 1000) + (thousands[i] !== '' ? ' ' + thousands[i] : '') + (word !== '' ? ' ' + word : '');
+              }
+              num = Math.floor(num / 1000);
+              i++;
+            }
+            
+            let result = (word || 'Zero') + ' Dollar' + (dollars !== 1 ? 's' : '');
+            if (cents > 0) {
+              result += ' and ' + convertLessThanThousand(cents) + ' Cent' + (cents !== 1 ? 's' : '');
+            }
+            return result.trim();
+          })()}</p>
         </div>
         ${data.notes ? `<div class="notes"><strong>Notes:</strong><br/>${data.notes.replace(/\n/g, '<br/>')}</div>` : ''}
         <div class="footer">
