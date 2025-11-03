@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Receipt, DollarSign, CreditCard, Eye, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CreateInvoiceModal } from "@/components/modals/CreateInvoiceModal";
+import { ViewInvoiceModal } from "@/components/modals/ViewInvoiceModal";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 
 const SalesInvoices = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -32,7 +35,11 @@ const SalesInvoices = () => {
         .select(`
           *,
           customers(name),
-          profiles(full_name)
+          profiles(full_name),
+          sales_invoice_items(
+            *,
+            inventory_items(name)
+          )
         `)
         .order('created_at', { ascending: false });
 
@@ -214,7 +221,14 @@ const SalesInvoices = () => {
                       <TableCell>{new Date(invoice.created_at).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button variant="ghost" size="icon">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => {
+                              setSelectedInvoice(invoice);
+                              setIsViewModalOpen(true);
+                            }}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button 
@@ -242,6 +256,12 @@ const SalesInvoices = () => {
         onSuccess={() => {
           fetchInvoices();
         }}
+      />
+
+      <ViewInvoiceModal
+        open={isViewModalOpen}
+        onOpenChange={setIsViewModalOpen}
+        invoice={selectedInvoice}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
