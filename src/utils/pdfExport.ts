@@ -181,7 +181,7 @@ export const generateQuotationPDF = (data: QuotationData) => {
     : 0;
   const netAmount = data.total_amount - discountAmount;
   
-  const footRows: any[] = [['', '', 'Value:', `$${data.total_amount.toFixed(2)}`]];
+  const footRows: any[] = [];
   
   if (data.discount_value && data.discount_value > 0) {
     const discountLabel = data.discount_type === 'percentage' 
@@ -403,7 +403,6 @@ export const printQuotation = (data: QuotationData) => {
           </tbody>
         </table>
         <div class="totals">
-          <p><strong>Value:</strong> $${data.total_amount.toFixed(2)}</p>
           ${data.discount_value && data.discount_value > 0 ? `
             <p><strong>${data.discount_type === 'percentage' ? `Given Discount (${data.discount_value}%):` : 'Given Discount:'}</strong> -$${(data.discount_type === 'percentage' ? data.total_amount * data.discount_value / 100 : data.discount_value).toFixed(2)}</p>
             <p><strong>Net Amount:</strong> $${(data.total_amount - (data.discount_type === 'percentage' ? data.total_amount * data.discount_value / 100 : data.discount_value)).toFixed(2)}</p>
@@ -575,7 +574,7 @@ export const generateInvoicePDF = (data: InvoiceData) => {
     : 0;
   const invoiceNetAmount = data.total_amount - invoiceDiscountAmount;
   
-  const invoiceFootRows: any[] = [['', '', 'Value:', `$${data.total_amount.toFixed(2)}`]];
+  const invoiceFootRows: any[] = [];
   
   if (data.discount_value && data.discount_value > 0) {
     const discountLabel = data.discount_type === 'percentage' 
@@ -718,7 +717,6 @@ export const printInvoice = (data: InvoiceData) => {
           </tbody>
         </table>
         <div class="totals">
-          <p><strong>Value:</strong> $${data.total_amount.toFixed(2)}</p>
           ${data.discount_value && data.discount_value > 0 ? `
             <p><strong>${data.discount_type === 'percentage' ? `Given Discount (${data.discount_value}%):` : 'Given Discount:'}</strong> -$${(data.discount_type === 'percentage' ? data.total_amount * data.discount_value / 100 : data.discount_value).toFixed(2)}</p>
             <p><strong>Net Amount:</strong> $${(data.total_amount - (data.discount_type === 'percentage' ? data.total_amount * data.discount_value / 100 : data.discount_value)).toFixed(2)}</p>

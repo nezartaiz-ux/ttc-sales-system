@@ -9,7 +9,7 @@ import { Download, BarChart3, TrendingUp, PieChart, FileText } from "lucide-reac
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { exportToCSV } from "@/utils/csvExport";
-import { generateReportPDF } from "@/utils/reportPdfExport";
+import { generateReportPDF, generateDetailedQuotationReport } from "@/utils/reportPdfExport";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Reports = () => {
@@ -131,31 +131,76 @@ const Reports = () => {
     if (!customReportType) return;
     setIsExporting(true);
     try {
-      const tableName = customReportType === 'sales' ? 'sales_invoices' as const : 
-                        customReportType === 'purchase-orders' ? 'purchase_orders' as const :
-                        customReportType as any;
-      const { data } = await supabase.from(tableName).select('*');
-      
-      if (data && data.length > 0) {
-        const headers = Object.keys(data[0]);
-        const rows = data.map(row => headers.map(h => String((row as any)[h] || '')));
+      // Special handling for detailed quotations report
+      if (customReportType === 'quotations') {
+        let query = supabase
+          .from('quotations')
+          .select('*, customers(name), quotation_items(*, inventory_items(name))');
         
-        // Map report types to match serial number formats
-        let reportType = customReportType;
-        if (customReportType === 'sales') reportType = 'sales';
-        else if (customReportType === 'inventory') reportType = 'inventory';
-        else if (customReportType === 'purchase-orders') reportType = 'purchase_orders';
-        else if (customReportType === 'quotations') reportType = 'quotations';
+        if (startDate && endDate) {
+          query = query
+            .gte('created_at', startDate)
+            .lte('created_at', endDate);
+        }
         
-        generateReportPDF({
-          title: `${customReportType.toUpperCase()} Report`,
-          dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
-          headers,
-          rows,
-          reportType,
-          created_by_name: userFullName || 'N/A'
-        });
-        toast({ title: 'Success', description: 'PDF report generated' });
+        const { data } = await query;
+        
+        if (data && data.length > 0) {
+          const quotationsData = data.map((q: any) => ({
+            quotation_number: q.quotation_number,
+            created_at: q.created_at,
+            customer_name: q.customers?.name || 'N/A',
+            total_amount: q.total_amount,
+            discount_type: q.discount_type,
+            discount_value: q.discount_value,
+            tax_amount: q.tax_amount,
+            grand_total: q.grand_total,
+            items: q.quotation_items?.map((item: any) => ({
+              name: item.inventory_items?.name || 'N/A',
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              total_price: item.total_price
+            })) || []
+          }));
+          
+          generateDetailedQuotationReport({
+            title: 'Quotations Report',
+            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
+            quotations: quotationsData,
+            created_by_name: userFullName || 'N/A'
+          });
+          
+          toast({ title: 'Success', description: 'PDF report generated' });
+        } else {
+          toast({ title: 'Info', description: 'No quotations found for the selected period' });
+        }
+      } else {
+        // Default report generation for other types
+        const tableName = customReportType === 'sales' ? 'sales_invoices' as const : 
+                          customReportType === 'purchase-orders' ? 'purchase_orders' as const :
+                          customReportType as any;
+        const { data } = await supabase.from(tableName).select('*');
+        
+        if (data && data.length > 0) {
+          const headers = Object.keys(data[0]);
+          const rows = data.map(row => headers.map(h => String((row as any)[h] || '')));
+          
+          // Map report types to match serial number formats
+          let reportType = customReportType;
+          if (customReportType === 'sales') reportType = 'sales';
+          else if (customReportType === 'inventory') reportType = 'inventory';
+          else if (customReportType === 'purchase-orders') reportType = 'purchase_orders';
+          
+          generateReportPDF({
+            title: `${customReportType.toUpperCase()} Report`,
+            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
+            headers,
+            rows,
+            reportType,
+            created_by_name: userFullName || 'N/A'
+          });
+          toast({ title: 'Success', description: 'PDF report generated' });
+        }
       }
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to generate PDF', variant: 'destructive' });
