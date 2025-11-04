@@ -21,7 +21,14 @@ export const ViewQuotationModal = ({ open, onOpenChange, quotation }: ViewQuotat
       total_amount: quotation.total_amount || 0,
       tax_amount: quotation.tax_amount || 0,
       grand_total: quotation.grand_total || 0,
-      items: quotation.quotation_items || [],
+      discount_type: quotation.discount_type || undefined,
+      discount_value: quotation.discount_value || undefined,
+      items: (quotation.quotation_items || []).map((item: any) => ({
+        name: item.inventory_items?.name || 'N/A',
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_price: item.total_price,
+      })),
       notes: quotation.notes
     });
   };
@@ -34,7 +41,14 @@ export const ViewQuotationModal = ({ open, onOpenChange, quotation }: ViewQuotat
       total_amount: quotation.total_amount || 0,
       tax_amount: quotation.tax_amount || 0,
       grand_total: quotation.grand_total || 0,
-      items: quotation.quotation_items || [],
+      discount_type: quotation.discount_type || undefined,
+      discount_value: quotation.discount_value || undefined,
+      items: (quotation.quotation_items || []).map((item: any) => ({
+        name: item.inventory_items?.name || 'N/A',
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_price: item.total_price,
+      })),
       notes: quotation.notes
     });
   };

@@ -127,10 +127,17 @@ export const generateDetailedQuotationReport = (reportData: {
   
   // Process each quotation
   reportData.quotations.forEach((quotation, index) => {
+    // Start a new page for each quotation after the first to avoid overlap
+    if (index > 0) {
+      doc.addPage();
+      addReportHeader(doc);
+      currentY = 40;
+    }
     // Check if we need a new page
     if (currentY > 240) {
       doc.addPage();
-      currentY = 20;
+      addReportHeader(doc);
+      currentY = 40;
     }
     
     // Quotation header
