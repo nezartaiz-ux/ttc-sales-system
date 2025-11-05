@@ -135,16 +135,19 @@ const Reports = () => {
       if (customReportType === 'quotations') {
         let query = supabase
           .from('quotations')
-          .select('*, customers(name), quotation_items(*, inventory_items(name))');
+          .select('*, customers(name), quotation_items(*, inventory_items(name))')
+          .order('created_at', { ascending: true });
         
         if (startDate && endDate) {
+          const start = new Date(`${startDate}T00:00:00.000Z`).toISOString();
+          const end = new Date(`${endDate}T23:59:59.999Z`).toISOString();
           query = query
-            .gte('created_at', startDate)
-            .lte('created_at', endDate);
+            .gte('created_at', start)
+            .lte('created_at', end);
         }
         
-        const { data } = await query;
-        
+        const { data, error } = await query;
+        if (error) throw error;
         if (data && data.length > 0) {
           const quotationsData = data.map((q: any) => ({
             quotation_number: q.quotation_number,
