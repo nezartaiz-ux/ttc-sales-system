@@ -160,7 +160,7 @@ export const generateDetailedQuotationReport = (reportData: {
   // Create table
   autoTable(doc, {
     startY: tableStartY,
-    head: [['رقم العرض', 'التاريخ', 'التفاصيل', 'صافي السعر', 'الخصم', 'الإجمالي']],
+    head: [['Quotation #', 'Date', 'Details', 'Net Amount', 'Discount', 'Grand Total']],
     body: tableData,
     styles: { 
       fontSize: 8,
