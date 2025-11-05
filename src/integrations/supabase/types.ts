@@ -634,6 +634,50 @@ export type Database = {
         }
         Relationships: []
       }
+      technical_datasheets: {
+        Row: {
+          category: Database["public"]["Enums"]["datasheet_category"]
+          created_at: string
+          file_path: string
+          file_size: number | null
+          id: string
+          inventory_item_id: string | null
+          name: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["datasheet_category"]
+          created_at?: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          inventory_item_id?: string | null
+          name: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["datasheet_category"]
+          created_at?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          inventory_item_id?: string | null
+          name?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technical_datasheets_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_permissions: {
         Row: {
           action: Database["public"]["Enums"]["permission_action"]
@@ -732,6 +776,7 @@ export type Database = {
       }
     }
     Enums: {
+      datasheet_category: "generator" | "equipment" | "tractor"
       invoice_status: "draft" | "sent" | "paid" | "overdue" | "cancelled"
       invoice_type: "cash" | "credit"
       permission_action: "view" | "create" | "edit" | "delete"
@@ -880,6 +925,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      datasheet_category: ["generator", "equipment", "tractor"],
       invoice_status: ["draft", "sent", "paid", "overdue", "cancelled"],
       invoice_type: ["cash", "credit"],
       permission_action: ["view", "create", "edit", "delete"],

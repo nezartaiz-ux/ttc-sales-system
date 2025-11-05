@@ -11,7 +11,8 @@ import {
   Truck,
   BarChart3,
   Settings,
-  FolderOpen
+  FolderOpen,
+  BookOpen
 } from "lucide-react";
 
 const navigation = [
@@ -23,6 +24,7 @@ const navigation = [
   { name: "Quotations", href: "/quotations", icon: FileText },
   { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
   { name: "Sales Invoices", href: "/sales-invoices", icon: Receipt },
+  { name: "Technical Datasheets", href: "/technical-datasheets", icon: BookOpen },
   { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "Settings", href: "/settings", icon: Settings },
 ];

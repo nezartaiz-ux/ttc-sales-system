@@ -13,6 +13,7 @@ import Categories from "./pages/Categories";
 import Quotations from "./pages/Quotations";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import SalesInvoices from "./pages/SalesInvoices";
+import TechnicalDatasheets from "./pages/TechnicalDatasheets";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -71,6 +72,7 @@ const AppRoutes = () => {
         <Route path="/quotations" element={<ProtectedRoute><Quotations /></ProtectedRoute>} />
         <Route path="/purchase-orders" element={<ProtectedRoute><PurchaseOrders /></ProtectedRoute>} />
         <Route path="/sales-invoices" element={<ProtectedRoute><SalesInvoices /></ProtectedRoute>} />
+        <Route path="/technical-datasheets" element={<ProtectedRoute><TechnicalDatasheets /></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
