@@ -25,6 +25,16 @@ const Quotations = () => {
   const { canCreate, canView, canDelete } = useUserPermissions();
   const { toast } = useToast();
 
+  const displayName = (fullName?: string) => {
+    if (!fullName) return 'N/A';
+    if (fullName.includes('@')) {
+      const local = fullName.split('@')[0];
+      const words = local.replace(/[._-]+/g, ' ').split(' ').filter(Boolean);
+      return words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
+    return fullName;
+  };
+
   const fetchQuotations = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -63,7 +73,7 @@ const Quotations = () => {
         total_price: item.total_price
       })) || [],
       notes: quotation.notes,
-      created_by_name: quotation.profiles?.full_name || 'N/A',
+      created_by_name: displayName(quotation.profiles?.full_name),
       discount_type: quotation.discount_type,
       discount_value: quotation.discount_value
     });
@@ -84,7 +94,7 @@ const Quotations = () => {
         total_price: item.total_price
       })) || [],
       notes: quotation.notes,
-      created_by_name: quotation.profiles?.full_name || 'N/A',
+      created_by_name: displayName(quotation.profiles?.full_name),
       discount_type: quotation.discount_type,
       discount_value: quotation.discount_value
     });
@@ -237,7 +247,7 @@ const Quotations = () => {
                             {quotation.status}
                           </span>
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{quotation.profiles?.full_name || 'N/A'}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{displayName(quotation.profiles?.full_name)}</TableCell>
                         <TableCell>{new Date(quotation.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
