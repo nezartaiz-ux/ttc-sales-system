@@ -20,7 +20,7 @@ export const UploadDatasheetModal = ({ open, onOpenChange }: UploadDatasheetModa
   const [name, setName] = useState("");
   const [category, setCategory] = useState<DatasheetCategory>("generator");
   const [file, setFile] = useState<File | null>(null);
-  const [itemId, setItemId] = useState<string>("");
+  const [itemId, setItemId] = useState<string>("none");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -64,7 +64,7 @@ export const UploadDatasheetModal = ({ open, onOpenChange }: UploadDatasheetModa
           category,
           file_path: fileName,
           file_size: file.size,
-          inventory_item_id: itemId || null,
+          inventory_item_id: itemId && itemId !== "none" ? itemId : null,
           uploaded_by: user.id,
         });
 
@@ -92,7 +92,7 @@ export const UploadDatasheetModal = ({ open, onOpenChange }: UploadDatasheetModa
     setName("");
     setCategory("generator");
     setFile(null);
-    setItemId("");
+    setItemId("none");
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,7 +149,7 @@ export const UploadDatasheetModal = ({ open, onOpenChange }: UploadDatasheetModa
                 <SelectValue placeholder="Select item..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {inventoryItems.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
                     {item.name}
