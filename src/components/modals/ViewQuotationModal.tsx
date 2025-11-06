@@ -29,7 +29,8 @@ export const ViewQuotationModal = ({ open, onOpenChange, quotation }: ViewQuotat
         unit_price: item.unit_price,
         total_price: item.total_price,
       })),
-      notes: quotation.notes
+      notes: quotation.notes,
+      created_by_name: quotation.profiles?.full_name || 'N/A'
     });
   };
 
@@ -49,7 +50,8 @@ export const ViewQuotationModal = ({ open, onOpenChange, quotation }: ViewQuotat
         unit_price: item.unit_price,
         total_price: item.total_price,
       })),
-      notes: quotation.notes
+      notes: quotation.notes,
+      created_by_name: quotation.profiles?.full_name || 'N/A'
     });
   };
 

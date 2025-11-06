@@ -22,7 +22,8 @@ export const ViewPOModal = ({ open, onOpenChange, purchaseOrder }: ViewPOModalPr
       tax_amount: purchaseOrder.tax_amount || 0,
       grand_total: purchaseOrder.grand_total || 0,
       items: purchaseOrder.purchase_order_items || [],
-      notes: purchaseOrder.notes
+      notes: purchaseOrder.notes,
+      created_by_name: purchaseOrder.profiles?.full_name || 'N/A'
     });
   };
 
@@ -35,7 +36,8 @@ export const ViewPOModal = ({ open, onOpenChange, purchaseOrder }: ViewPOModalPr
       tax_amount: purchaseOrder.tax_amount || 0,
       grand_total: purchaseOrder.grand_total || 0,
       items: purchaseOrder.purchase_order_items || [],
-      notes: purchaseOrder.notes
+      notes: purchaseOrder.notes,
+      created_by_name: purchaseOrder.profiles?.full_name || 'N/A'
     });
   };
 
