@@ -73,32 +73,32 @@ const Inventory = () => {
               <Package className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">245</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-primary">+12</span> this month
-              </p>
+              <div className="text-2xl font-bold">{items.length}</div>
+              <p className="text-xs text-muted-foreground">All inventory items</p>
             </CardContent>
           </Card>
 
           <Card className="border-accent/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">CAT Equipment</CardTitle>
+              <CardTitle className="text-sm font-medium">Active Items</CardTitle>
               <Package className="h-4 w-4 text-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">156</div>
-              <p className="text-xs text-muted-foreground">Gensets & Heavy</p>
+              <div className="text-2xl font-bold">{items.filter(i => i.is_active).length}</div>
+              <p className="text-xs text-muted-foreground">Currently active</p>
             </CardContent>
           </Card>
 
           <Card className="border-primary/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">MF Tractors</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Stock Value</CardTitle>
               <Package className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">89</div>
-              <p className="text-xs text-muted-foreground">Agricultural equipment</p>
+              <div className="text-2xl font-bold">
+                ${items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">Current value</p>
             </CardContent>
           </Card>
 
@@ -108,7 +108,9 @@ const Inventory = () => {
               <AlertTriangle className="h-4 w-4 text-yellow-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">5</div>
+              <div className="text-2xl font-bold">
+                {items.filter(i => i.min_stock_level && i.quantity <= i.min_stock_level).length}
+              </div>
               <p className="text-xs text-muted-foreground">Need reorder</p>
             </CardContent>
           </Card>

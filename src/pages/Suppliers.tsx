@@ -64,10 +64,8 @@ const Suppliers = () => {
               <Truck className="h-4 w-4 text-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">34</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-accent">+2</span> new this month
-              </p>
+              <div className="text-2xl font-bold">{suppliers.length}</div>
+              <p className="text-xs text-muted-foreground">All suppliers</p>
             </CardContent>
           </Card>
 
@@ -77,19 +75,21 @@ const Suppliers = () => {
               <Truck className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">28</div>
-              <p className="text-xs text-muted-foreground">82% of total</p>
+              <div className="text-2xl font-bold">{suppliers.filter(s => s.is_active).length}</div>
+              <p className="text-xs text-muted-foreground">
+                {suppliers.length > 0 ? Math.round((suppliers.filter(s => s.is_active).length / suppliers.length) * 100) : 0}% of total
+              </p>
             </CardContent>
           </Card>
 
           <Card className="border-accent/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Key Suppliers</CardTitle>
+              <CardTitle className="text-sm font-medium">Inactive Suppliers</CardTitle>
               <Truck className="h-4 w-4 text-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">8</div>
-              <p className="text-xs text-muted-foreground">Strategic partners</p>
+              <div className="text-2xl font-bold">{suppliers.filter(s => !s.is_active).length}</div>
+              <p className="text-xs text-muted-foreground">Not currently active</p>
             </CardContent>
           </Card>
         </div>

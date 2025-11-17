@@ -132,10 +132,8 @@ const SalesInvoices = () => {
               <Receipt className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">234</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-primary">+15</span> this month
-              </p>
+              <div className="text-2xl font-bold">{invoices.length}</div>
+              <p className="text-xs text-muted-foreground">All invoices</p>
             </CardContent>
           </Card>
 
@@ -145,32 +143,34 @@ const SalesInvoices = () => {
               <DollarSign className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">198</div>
-              <p className="text-xs text-muted-foreground">85% payment rate</p>
+              <div className="text-2xl font-bold">{invoices.filter(inv => inv.status === 'paid').length}</div>
+              <p className="text-xs text-muted-foreground">
+                {invoices.length > 0 ? Math.round((invoices.filter(inv => inv.status === 'paid').length / invoices.length) * 100) : 0}% payment rate
+              </p>
             </CardContent>
           </Card>
 
           <Card className="border-yellow-500/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
+              <CardTitle className="text-sm font-medium">Draft</CardTitle>
               <CreditCard className="h-4 w-4 text-yellow-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">36</div>
-              <p className="text-xs text-muted-foreground">Awaiting payment</p>
+              <div className="text-2xl font-bold">{invoices.filter(inv => inv.status === 'draft').length}</div>
+              <p className="text-xs text-muted-foreground">Not yet sent</p>
             </CardContent>
           </Card>
 
           <Card className="border-accent/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
               <DollarSign className="h-4 w-4 text-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">$248K</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-accent">+18%</span> from last month
-              </p>
+              <div className="text-2xl font-bold">
+                ${(invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (inv.grand_total || 0), 0) / 1000000).toFixed(1)}M
+              </div>
+              <p className="text-xs text-muted-foreground">Paid invoices</p>
             </CardContent>
           </Card>
         </div>

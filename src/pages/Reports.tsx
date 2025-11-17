@@ -18,6 +18,9 @@ const Reports = () => {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [userFullName, setUserFullName] = useState<string>('');
+  const [totalInvoices, setTotalInvoices] = useState(0);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalQuotations, setTotalQuotations] = useState(0);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -35,6 +38,33 @@ const Reports = () => {
     };
     fetchUserInfo();
   }, [user]);
+
+  // Fetch summary data
+  useEffect(() => {
+    const fetchSummaryData = async () => {
+      try {
+        const [invoicesRes, quotationsRes] = await Promise.all([
+          supabase.from('sales_invoices').select('grand_total, status'),
+          supabase.from('quotations').select('id')
+        ]);
+        
+        if (invoicesRes.data) {
+          setTotalInvoices(invoicesRes.data.length);
+          const paidRevenue = invoicesRes.data
+            .filter(inv => inv.status === 'paid')
+            .reduce((sum, inv) => sum + (inv.grand_total || 0), 0);
+          setTotalRevenue(paidRevenue);
+        }
+        
+        if (quotationsRes.data) {
+          setTotalQuotations(quotationsRes.data.length);
+        }
+      } catch (error) {
+        console.error('Error fetching summary data:', error);
+      }
+    };
+    fetchSummaryData();
+  }, []);
 
   const handleExportAll = async () => {
     setIsExporting(true);
@@ -250,36 +280,36 @@ const Reports = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="border-primary/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Sales Analytics</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
               <BarChart3 className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">$248K</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-primary">+18%</span> from last month
-              </p>
+              <div className="text-2xl font-bold">
+                ${(totalRevenue / 1000000).toFixed(1)}M
+              </div>
+              <p className="text-xs text-muted-foreground">From paid invoices</p>
             </CardContent>
           </Card>
 
           <Card className="border-accent/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-accent" />
+              <CardTitle className="text-sm font-medium">Total Invoices</CardTitle>
+              <FileText className="h-4 w-4 text-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">15.3%</div>
-              <p className="text-xs text-muted-foreground">Year over year</p>
+              <div className="text-2xl font-bold">{totalInvoices}</div>
+              <p className="text-xs text-muted-foreground">All sales invoices</p>
             </CardContent>
           </Card>
 
           <Card className="border-primary/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Profit Margin</CardTitle>
-              <PieChart className="h-4 w-4 text-primary" />
+              <CardTitle className="text-sm font-medium">Quotations</CardTitle>
+              <TrendingUp className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">24.8%</div>
-              <p className="text-xs text-muted-foreground">Above industry avg</p>
+              <div className="text-2xl font-bold">{totalQuotations}</div>
+              <p className="text-xs text-muted-foreground">Total quotations</p>
             </CardContent>
           </Card>
         </div>
