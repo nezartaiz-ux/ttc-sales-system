@@ -75,7 +75,10 @@ const Quotations = () => {
       notes: quotation.notes,
       created_by_name: displayName(quotation.profiles?.full_name),
       discount_type: quotation.discount_type,
-      discount_value: quotation.discount_value
+      discount_value: quotation.discount_value,
+      customs_duty_status: quotation.customs_duty_status,
+      delivery_terms: quotation.delivery_terms,
+      delivery_details: quotation.delivery_details
     });
   };
 
@@ -96,7 +99,10 @@ const Quotations = () => {
       notes: quotation.notes,
       created_by_name: displayName(quotation.profiles?.full_name),
       discount_type: quotation.discount_type,
-      discount_value: quotation.discount_value
+      discount_value: quotation.discount_value,
+      customs_duty_status: quotation.customs_duty_status,
+      delivery_terms: quotation.delivery_terms,
+      delivery_details: quotation.delivery_details
     });
   };
 
