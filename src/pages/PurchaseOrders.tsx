@@ -147,43 +147,41 @@ const PurchaseOrders = () => {
               <ShoppingCart className="h-4 w-4 text-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">89</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-accent">+5</span> this month
-              </p>
+              <div className="text-2xl font-bold">{purchaseOrders.length}</div>
+              <p className="text-xs text-muted-foreground">All purchase orders</p>
             </CardContent>
           </Card>
 
           <Card className="border-yellow-500/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
+              <CardTitle className="text-sm font-medium">Draft</CardTitle>
               <ShoppingCart className="h-4 w-4 text-yellow-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">12</div>
+              <div className="text-2xl font-bold">{purchaseOrders.filter(po => po.status === 'draft').length}</div>
               <p className="text-xs text-muted-foreground">Awaiting approval</p>
             </CardContent>
           </Card>
 
           <Card className="border-blue-500/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">In Transit</CardTitle>
+              <CardTitle className="text-sm font-medium">Sent</CardTitle>
               <Truck className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">8</div>
-              <p className="text-xs text-muted-foreground">En route</p>
+              <div className="text-2xl font-bold">{purchaseOrders.filter(po => po.status === 'sent').length}</div>
+              <p className="text-xs text-muted-foreground">Sent to suppliers</p>
             </CardContent>
           </Card>
 
           <Card className="border-green-500/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Delivered</CardTitle>
+              <CardTitle className="text-sm font-medium">Received</CardTitle>
               <Package className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">69</div>
-              <p className="text-xs text-muted-foreground">Completed</p>
+              <div className="text-2xl font-bold">{purchaseOrders.filter(po => po.status === 'received').length}</div>
+              <p className="text-xs text-muted-foreground">Completed orders</p>
             </CardContent>
           </Card>
         </div>

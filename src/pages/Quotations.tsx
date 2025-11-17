@@ -174,10 +174,8 @@ const Quotations = () => {
               <FileText className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">156</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-primary">+8</span> this month
-              </p>
+              <div className="text-2xl font-bold">{quotations.length}</div>
+              <p className="text-xs text-muted-foreground">All quotations</p>
             </CardContent>
           </Card>
 
@@ -187,7 +185,7 @@ const Quotations = () => {
               <Clock className="h-4 w-4 text-yellow-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">23</div>
+              <div className="text-2xl font-bold">{quotations.filter(q => q.status === 'sent').length}</div>
               <p className="text-xs text-muted-foreground">Awaiting response</p>
             </CardContent>
           </Card>
@@ -198,8 +196,10 @@ const Quotations = () => {
               <CheckCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">98</div>
-              <p className="text-xs text-muted-foreground">62% acceptance rate</p>
+              <div className="text-2xl font-bold">{quotations.filter(q => q.status === 'accepted').length}</div>
+              <p className="text-xs text-muted-foreground">
+                {quotations.length > 0 ? Math.round((quotations.filter(q => q.status === 'accepted').length / quotations.length) * 100) : 0}% acceptance rate
+              </p>
             </CardContent>
           </Card>
 
@@ -209,8 +209,10 @@ const Quotations = () => {
               <FileText className="h-4 w-4 text-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">$2.4M</div>
-              <p className="text-xs text-muted-foreground">This quarter</p>
+              <div className="text-2xl font-bold">
+                ${(quotations.reduce((sum, q) => sum + (q.grand_total || 0), 0) / 1000000).toFixed(1)}M
+              </div>
+              <p className="text-xs text-muted-foreground">All time value</p>
             </CardContent>
           </Card>
         </div>
