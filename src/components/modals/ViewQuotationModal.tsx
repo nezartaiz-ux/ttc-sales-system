@@ -23,6 +23,9 @@ export const ViewQuotationModal = ({ open, onOpenChange, quotation }: ViewQuotat
       grand_total: quotation.grand_total || 0,
       discount_type: quotation.discount_type || undefined,
       discount_value: quotation.discount_value || undefined,
+      customs_duty_status: quotation.customs_duty_status || undefined,
+      delivery_terms: quotation.delivery_terms || undefined,
+      delivery_details: quotation.delivery_details || undefined,
       items: (quotation.quotation_items || []).map((item: any) => ({
         name: item.inventory_items?.name || 'N/A',
         quantity: item.quantity,
@@ -44,6 +47,9 @@ export const ViewQuotationModal = ({ open, onOpenChange, quotation }: ViewQuotat
       grand_total: quotation.grand_total || 0,
       discount_type: quotation.discount_type || undefined,
       discount_value: quotation.discount_value || undefined,
+      customs_duty_status: quotation.customs_duty_status || undefined,
+      delivery_terms: quotation.delivery_terms || undefined,
+      delivery_details: quotation.delivery_details || undefined,
       items: (quotation.quotation_items || []).map((item: any) => ({
         name: item.inventory_items?.name || 'N/A',
         quantity: item.quantity,

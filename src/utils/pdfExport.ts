@@ -110,6 +110,9 @@ interface QuotationData {
   created_by_name?: string;
   discount_type?: string;
   discount_value?: number;
+  customs_duty_status?: string;
+  delivery_terms?: string;
+  delivery_details?: string;
 }
 
 interface POData {
@@ -166,11 +169,27 @@ export const generateQuotationPDF = (data: QuotationData) => {
   // Quotation details
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Quotation #: ${data.quotation_number}`, 14, 58);
-  doc.text(`Customer: ${data.customer_name}`, 14, 65);
-  doc.text(`Valid Until: ${data.validity_period}`, 14, 72);
+  let yPos = 58;
+  doc.text(`Quotation #: ${data.quotation_number}`, 14, yPos);
+  yPos += 7;
+  doc.text(`Customer: ${data.customer_name}`, 14, yPos);
+  yPos += 7;
+  doc.text(`Valid Until: ${data.validity_period}`, 14, yPos);
+  if (data.customs_duty_status) {
+    yPos += 7;
+    doc.text(`Customs & Duty Status: ${data.customs_duty_status}`, 14, yPos);
+  }
+  if (data.delivery_terms) {
+    yPos += 7;
+    doc.text(`Delivery Terms: ${data.delivery_terms}`, 14, yPos);
+  }
+  if (data.delivery_details) {
+    yPos += 7;
+    doc.text(`Delivery Details: ${data.delivery_details}`, 14, yPos);
+  }
   if (data.created_by_name) {
-    doc.text(`Created by: ${data.created_by_name}`, 14, 79);
+    yPos += 7;
+    doc.text(`Created by: ${data.created_by_name}`, 14, yPos);
   }
   
   // Items table - Calculate amounts
@@ -197,7 +216,7 @@ export const generateQuotationPDF = (data: QuotationData) => {
   );
   
   autoTable(doc, {
-    startY: data.created_by_name ? 87 : 80,
+    startY: yPos + 8,
     head: [['Item', 'Quantity', 'Unit Price', 'Total']],
     body: data.items.map(item => [
       item.name,
@@ -380,6 +399,9 @@ export const printQuotation = (data: QuotationData) => {
           <p><strong>Quotation #:</strong> ${data.quotation_number}</p>
           <p><strong>Customer:</strong> ${data.customer_name}</p>
           <p><strong>Valid Until:</strong> ${data.validity_period}</p>
+          ${data.customs_duty_status ? `<p><strong>Customs & Duty Status:</strong> ${data.customs_duty_status}</p>` : ''}
+          ${data.delivery_terms ? `<p><strong>Delivery Terms:</strong> ${data.delivery_terms}</p>` : ''}
+          ${data.delivery_details ? `<p><strong>Delivery Details:</strong> ${data.delivery_details}</p>` : ''}
           ${data.created_by_name ? `<p><strong>Created by:</strong> ${data.created_by_name}</p>` : ''}
         </div>
         <table>
