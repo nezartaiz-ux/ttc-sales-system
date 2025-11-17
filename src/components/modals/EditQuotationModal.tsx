@@ -364,7 +364,13 @@ export const EditQuotationModal = ({ open, onOpenChange, quotation, onSuccess }:
 
           <Card>
             <CardHeader>
-              <CardTitle>Items</CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle>Items</CardTitle>
+                <Button type="button" onClick={addItem} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Item
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
@@ -374,20 +380,25 @@ export const EditQuotationModal = ({ open, onOpenChange, quotation, onSuccess }:
                     <TableHead>Quantity</TableHead>
                     <TableHead>Unit Price</TableHead>
                     <TableHead>Total</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((item, index) => (
                     <TableRow key={index}>
                       <TableCell>
-                        <Select value={item.inventory_item_id} onValueChange={(value) => updateItem(index, 'inventory_item_id', value)}>
+                        <Select
+                          value={item.inventory_item_id}
+                          onValueChange={(value) => updateItem(index, 'inventory_item_id', value)}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Select item" />
                           </SelectTrigger>
                           <SelectContent>
                             {inventoryItems.map(invItem => (
-                              <SelectItem key={invItem.id} value={invItem.id}>{invItem.name}</SelectItem>
+                              <SelectItem key={invItem.id} value={invItem.id}>
+                                {invItem.name}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -411,7 +422,12 @@ export const EditQuotationModal = ({ open, onOpenChange, quotation, onSuccess }:
                       </TableCell>
                       <TableCell>${item.total_price.toFixed(2)}</TableCell>
                       <TableCell>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeItem(index)}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -419,10 +435,6 @@ export const EditQuotationModal = ({ open, onOpenChange, quotation, onSuccess }:
                   ))}
                 </TableBody>
               </Table>
-              <Button type="button" variant="outline" onClick={addItem} className="mt-4">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Item
-              </Button>
             </CardContent>
           </Card>
 
@@ -434,7 +446,10 @@ export const EditQuotationModal = ({ open, onOpenChange, quotation, onSuccess }:
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="discount_type">Discount Type</Label>
-                  <Select value={formData.discount_type} onValueChange={(value: 'percentage' | 'fixed') => setFormData({ ...formData, discount_type: value })}>
+                  <Select
+                    value={formData.discount_type}
+                    onValueChange={(value: 'percentage' | 'fixed') => setFormData({ ...formData, discount_type: value })}
+                  >
                     <SelectTrigger id="discount_type">
                       <SelectValue />
                     </SelectTrigger>
@@ -469,18 +484,16 @@ export const EditQuotationModal = ({ open, onOpenChange, quotation, onSuccess }:
                   <span>Subtotal:</span>
                   <span>${totals.subtotal.toFixed(2)}</span>
                 </div>
-                {formData.discount_value > 0 && (
-                  <>
-                    <div className="flex justify-between text-destructive">
-                      <span>Discount ({formData.discount_type === 'percentage' ? `${formData.discount_value}%` : '$'}):</span>
-                      <span>-${totals.discount_amount.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Net Amount:</span>
-                      <span>${totals.total_amount.toFixed(2)}</span>
-                    </div>
-                  </>
+                {totals.discount_amount > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Discount ({formData.discount_type === 'percentage' ? `${formData.discount_value}%` : '$'}):</span>
+                    <span>-${totals.discount_amount.toFixed(2)}</span>
+                  </div>
                 )}
+                <div className="flex justify-between">
+                  <span>Net Amount:</span>
+                  <span>${totals.total_amount.toFixed(2)}</span>
+                </div>
                 <div className="flex justify-between">
                   <span>{getTaxLabel()}:</span>
                   <span>${totals.tax_amount.toFixed(2)}</span>
