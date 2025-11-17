@@ -3,10 +3,11 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, FileText, Clock, CheckCircle, Eye, Download, Printer, Trash2 } from "lucide-react";
+import { Plus, FileText, Clock, CheckCircle, Eye, Download, Printer, Trash2, Edit } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CreateQuotationModal } from "@/components/modals/CreateQuotationModal";
 import { ViewQuotationModal } from "@/components/modals/ViewQuotationModal";
+import { EditQuotationModal } from "@/components/modals/EditQuotationModal";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +17,7 @@ import { generateQuotationPDF, printQuotation } from "@/utils/pdfExport";
 const Quotations = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
   const [quotations, setQuotations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +58,11 @@ const Quotations = () => {
   const handleView = (quotation: any) => {
     setSelectedQuotation(quotation);
     setIsViewModalOpen(true);
+  };
+
+  const handleEdit = (quotation: any) => {
+    setSelectedQuotation(quotation);
+    setIsEditModalOpen(true);
   };
 
   const handleDownloadPDF = (quotation: any) => {
@@ -260,6 +267,14 @@ const Quotations = () => {
                             <Button size="sm" variant="outline" onClick={() => handleView(quotation)}>
                               <Eye className="h-4 w-4" />
                             </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => handleEdit(quotation)}
+                              disabled={!isAdmin && !canCreate('quotations')}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
                             <Button size="sm" variant="outline" onClick={() => handleDownloadPDF(quotation)}>
                               <Download className="h-4 w-4" />
                             </Button>
@@ -295,6 +310,13 @@ const Quotations = () => {
         open={isViewModalOpen}
         onOpenChange={setIsViewModalOpen}
         quotation={selectedQuotation}
+      />
+
+      <EditQuotationModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        quotation={selectedQuotation}
+        onSuccess={fetchQuotations}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
