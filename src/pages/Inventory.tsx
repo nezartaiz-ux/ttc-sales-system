@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Package, AlertTriangle, Pencil } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { AddItemModal } from "@/components/modals/AddItemModal";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -14,6 +16,7 @@ const Inventory = () => {
   const [editingItem, setEditingItem] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showInStockOnly, setShowInStockOnly] = useState(false);
   const { isInventory } = useUserRole();
   const { toast } = useToast();
 
@@ -31,7 +34,12 @@ const Inventory = () => {
     setLoading(false);
   };
 
-  const groupedItems = items.reduce((acc: Record<string, any[]>, item) => {
+  // Filter items based on in-stock toggle
+  const filteredItems = showInStockOnly 
+    ? items.filter(item => item.quantity > 0)
+    : items;
+
+  const groupedItems = filteredItems.reduce((acc: Record<string, any[]>, item) => {
     const category = item.product_categories?.name || 'Uncategorized';
     if (!acc[category]) acc[category] = [];
     acc[category].push(item);
@@ -50,23 +58,35 @@ const Inventory = () => {
             <h1 className="text-3xl font-bold text-foreground">Inventory Management</h1>
             <p className="text-muted-foreground">Track CAT gensets, heavy equipment & MF tractors</p>
           </div>
-          <Button 
-            className="bg-primary hover:bg-primary/90"
-            onClick={() => {
-              if (!isInventory) {
-                toast({ title: 'Permission denied', description: 'Only inventory staff or admins can add items.', variant: 'destructive' });
-                return;
-              }
-              setIsAddModalOpen(true);
-            }}
-            disabled={!isInventory}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Item
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="in-stock-filter"
+                checked={showInStockOnly}
+                onCheckedChange={setShowInStockOnly}
+              />
+              <Label htmlFor="in-stock-filter" className="text-sm cursor-pointer">
+                In Stock Only
+              </Label>
+            </div>
+            <Button 
+              className="bg-primary hover:bg-primary/90"
+              onClick={() => {
+                if (!isInventory) {
+                  toast({ title: 'Permission denied', description: 'Only inventory staff or admins can add items.', variant: 'destructive' });
+                  return;
+                }
+                setIsAddModalOpen(true);
+              }}
+              disabled={!isInventory}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Item
+            </Button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
           <Card className="border-primary/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Items</CardTitle>
@@ -75,6 +95,17 @@ const Inventory = () => {
             <CardContent>
               <div className="text-2xl font-bold">{items.length}</div>
               <p className="text-xs text-muted-foreground">All inventory items</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-green-500/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">In Stock</CardTitle>
+              <Package className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{items.filter(i => i.quantity > 0).length}</div>
+              <p className="text-xs text-muted-foreground">Items available</p>
             </CardContent>
           </Card>
 
@@ -123,13 +154,13 @@ const Inventory = () => {
                 <div className="text-center py-8 text-muted-foreground">Loading inventory...</div>
               </CardContent>
             </Card>
-          ) : items.length === 0 ? (
+          ) : filteredItems.length === 0 ? (
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center py-8 text-muted-foreground">
                   <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No inventory items found</p>
-                  <p className="text-sm">Add your first item using the button above</p>
+                  <p>{showInStockOnly ? 'No items in stock' : 'No inventory items found'}</p>
+                  <p className="text-sm">{showInStockOnly ? 'All items are out of stock' : 'Add your first item using the button above'}</p>
                 </div>
               </CardContent>
             </Card>

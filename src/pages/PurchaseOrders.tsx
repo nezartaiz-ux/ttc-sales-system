@@ -63,7 +63,8 @@ const PurchaseOrders = () => {
         total_price: item.total_price
       })) || [],
       notes: po.notes,
-      created_by_name: po.profiles?.full_name || 'N/A'
+      created_by_name: po.profiles?.full_name || 'N/A',
+      customs_duty_status: po.customs_duty_status || undefined
     });
   };
 
@@ -82,7 +83,8 @@ const PurchaseOrders = () => {
         total_price: item.total_price
       })) || [],
       notes: po.notes,
-      created_by_name: po.profiles?.full_name || 'N/A'
+      created_by_name: po.profiles?.full_name || 'N/A',
+      customs_duty_status: po.customs_duty_status || undefined
     });
   };
 
@@ -221,7 +223,7 @@ const PurchaseOrders = () => {
                         <TableCell className="font-medium">{po.order_number}</TableCell>
                         <TableCell>{po.suppliers?.name || 'N/A'}</TableCell>
                         <TableCell>{po.expected_delivery_date || 'N/A'}</TableCell>
-                        <TableCell>${po.grand_total}</TableCell>
+                        <TableCell>${po.grand_total?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell>
                           <span className={`capitalize ${
                             po.status === 'delivered' ? 'text-green-600' : 

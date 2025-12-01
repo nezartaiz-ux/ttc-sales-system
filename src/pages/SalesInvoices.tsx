@@ -211,7 +211,7 @@ const SalesInvoices = () => {
                       <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                       <TableCell>{invoice.customers?.name || 'N/A'}</TableCell>
                       <TableCell className="capitalize">{invoice.invoice_type}</TableCell>
-                      <TableCell>${parseFloat(invoice.grand_total).toFixed(2)}</TableCell>
+                      <TableCell>${parseFloat(invoice.grand_total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       <TableCell>
                         <Badge variant={getStatusColor(invoice.status)}>
                           {invoice.status}

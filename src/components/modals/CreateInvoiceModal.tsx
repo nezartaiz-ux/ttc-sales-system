@@ -278,18 +278,29 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
             <div className="space-y-2">
               <Label>Import from Purchase Order (Optional)</Label>
               <Select value={formData.purchase_order_id} onValueChange={(v) => {
-                setFormData(p => ({ ...p, purchase_order_id: v }));
-                // Auto-populate items from PO
+                // Auto-populate items and other data from PO
                 const selectedPO = purchaseOrders.find(po => po.id === v);
-                if (selectedPO && selectedPO.purchase_order_items) {
-                  const poItems = selectedPO.purchase_order_items.map((pi: any) => ({
-                    inventory_item_id: pi.inventory_item_id,
-                    item_name: pi.inventory_items?.name || '',
-                    quantity: pi.quantity,
-                    unit_price: pi.inventory_items?.selling_price || pi.unit_price,
-                    total_price: pi.quantity * (pi.inventory_items?.selling_price || pi.unit_price)
+                if (selectedPO) {
+                  // Update form data with PO details
+                  setFormData(p => ({ 
+                    ...p, 
+                    purchase_order_id: v,
+                    customs_duty_status: selectedPO.customs_duty_status || ''
                   }));
-                  setItems(poItems);
+
+                  // Populate items
+                  if (selectedPO.purchase_order_items) {
+                    const poItems = selectedPO.purchase_order_items.map((pi: any) => ({
+                      inventory_item_id: pi.inventory_item_id,
+                      item_name: pi.inventory_items?.name || '',
+                      quantity: pi.quantity,
+                      unit_price: pi.inventory_items?.selling_price || pi.unit_price,
+                      total_price: pi.quantity * (pi.inventory_items?.selling_price || pi.unit_price)
+                    }));
+                    setItems(poItems);
+                  }
+                } else {
+                  setFormData(p => ({ ...p, purchase_order_id: v }));
                 }
               }}>
                 <SelectTrigger>
