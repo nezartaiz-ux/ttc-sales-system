@@ -104,8 +104,8 @@ export const ViewQuotationModal = ({ open, onOpenChange, quotation }: ViewQuotat
                   <TableRow key={item.id}>
                     <TableCell>{item.inventory_items?.name || 'N/A'}</TableCell>
                     <TableCell>{item.quantity}</TableCell>
-                    <TableCell>${item.unit_price}</TableCell>
-                    <TableCell>${item.total_price}</TableCell>
+                    <TableCell>${item.unit_price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    <TableCell>${item.total_price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -113,9 +113,9 @@ export const ViewQuotationModal = ({ open, onOpenChange, quotation }: ViewQuotat
           </div>
 
           <div className="space-y-2 text-right">
-            <p><span className="text-muted-foreground">Subtotal:</span> <span className="font-semibold">${quotation.total_amount}</span></p>
-            <p><span className="text-muted-foreground">Tax:</span> <span className="font-semibold">${quotation.tax_amount}</span></p>
-            <p className="text-lg"><span className="text-muted-foreground">Grand Total:</span> <span className="font-bold">${quotation.grand_total}</span></p>
+            <p><span className="text-muted-foreground">Subtotal:</span> <span className="font-semibold">${quotation.total_amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
+            <p><span className="text-muted-foreground">Tax:</span> <span className="font-semibold">${quotation.tax_amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
+            <p className="text-lg"><span className="text-muted-foreground">Grand Total:</span> <span className="font-bold">${quotation.grand_total?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
           </div>
 
           {quotation.notes && (

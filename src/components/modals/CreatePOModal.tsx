@@ -115,29 +115,45 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
     }
 
     try {
-      const { data: quotationItems, error } = await supabase
-        .from('quotation_items')
-        .select('inventory_item_id, quantity, unit_price, total_price, inventory_items(name)')
-        .eq('quotation_id', selectedQuotationId);
+      // Fetch quotation with items and customer info
+      const { data: quotation, error: quotationError } = await supabase
+        .from('quotations')
+        .select('*, customers(id, name), quotation_items(inventory_item_id, quantity, unit_price, total_price, inventory_items(name))')
+        .eq('id', selectedQuotationId)
+        .single();
 
-      if (error) throw error;
+      if (quotationError) throw quotationError;
 
-      if (quotationItems && quotationItems.length > 0) {
-        const importedItems: POItem[] = quotationItems.map((qi: any) => ({
-          inventory_item_id: qi.inventory_item_id,
-          item_name: qi.inventory_items?.name || '',
-          quantity: qi.quantity,
-          unit_price: qi.unit_price,
-          total_price: qi.total_price
-        }));
-        
-        setItems(importedItems);
-        toast({ title: 'Success', description: `Loaded ${quotationItems.length} items from quotation` });
+      if (quotation) {
+        // Load items
+        if (quotation.quotation_items && quotation.quotation_items.length > 0) {
+          const importedItems: POItem[] = quotation.quotation_items.map((qi: any) => ({
+            inventory_item_id: qi.inventory_item_id,
+            item_name: qi.inventory_items?.name || '',
+            quantity: qi.quantity,
+            unit_price: qi.unit_price,
+            total_price: qi.total_price
+          }));
+          setItems(importedItems);
+        }
+
+        // Load customs duty status from quotation
+        if (quotation.customs_duty_status) {
+          setFormData(prev => ({
+            ...prev,
+            customs_duty_status: quotation.customs_duty_status
+          }));
+        }
+
+        toast({ 
+          title: 'Success', 
+          description: `Loaded ${quotation.quotation_items?.length || 0} items from quotation (Customer: ${quotation.customers?.name || 'N/A'})` 
+        });
       } else {
-        toast({ title: 'Info', description: 'No items found in selected quotation', variant: 'default' });
+        toast({ title: 'Info', description: 'No data found in selected quotation', variant: 'default' });
       }
     } catch (error: any) {
-      toast({ title: 'Error', description: `Failed to load quotation items: ${error.message}`, variant: 'destructive' });
+      toast({ title: 'Error', description: `Failed to load quotation data: ${error.message}`, variant: 'destructive' });
     }
   };
 

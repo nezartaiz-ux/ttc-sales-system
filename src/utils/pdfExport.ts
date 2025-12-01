@@ -3,6 +3,14 @@ import autoTable from 'jspdf-autotable';
 import mfLogo from '@/assets/mf-logo.png';
 import tehamaLogo from '@/assets/tehama-logo.png';
 
+// Helper function to format currency with commas
+const formatCurrency = (amount: number): string => {
+  return '$' + amount.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+
 // Company information
 const COMPANY_INFO = {
   name: "Tehama Trading Company",
@@ -80,7 +88,7 @@ const amountToWords = (amount: number): string => {
   return result;
 };
 
-// Helper function to add footer
+// Helper function to add footer with company info
 const addPDFFooter = (doc: jsPDF) => {
   const pageHeight = doc.internal.pageSize.height;
   doc.setFontSize(8);
@@ -91,6 +99,33 @@ const addPDFFooter = (doc: jsPDF) => {
   const textWidth = doc.getTextWidth(footerText);
   const centerX = (doc.internal.pageSize.width - textWidth) / 2;
   doc.text(footerText, centerX, pageHeight - 10);
+};
+
+// Helper function to add signature section at the bottom of last page
+const addSignatureSection = (doc: jsPDF, createdByName?: string) => {
+  const pageWidth = doc.internal.pageSize.width;
+  const pageHeight = doc.internal.pageSize.height;
+  
+  // Position signature section above footer
+  const signatureY = pageHeight - 45;
+  
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  
+  // Prepared by section on the right
+  const rightX = pageWidth - 70;
+  doc.text('Prepared by:', rightX, signatureY);
+  
+  if (createdByName) {
+    doc.setFont('helvetica', 'bold');
+    doc.text(createdByName, rightX, signatureY + 6);
+    doc.setFont('helvetica', 'normal');
+  }
+  
+  // Signature line
+  doc.line(rightX, signatureY + 20, rightX + 50, signatureY + 20);
+  doc.setFontSize(8);
+  doc.text('Signature', rightX + 15, signatureY + 25);
 };
 
 interface QuotationData {
@@ -130,6 +165,7 @@ interface POData {
   }>;
   notes?: string;
   created_by_name?: string;
+  customs_duty_status?: string;
 }
 
 interface InvoiceData {
@@ -150,13 +186,14 @@ interface InvoiceData {
   created_by_name?: string;
   discount_type?: string;
   discount_value?: number;
+  customs_duty_status?: string;
 }
 
 export const generateQuotationPDF = (data: QuotationData) => {
   const doc = new jsPDF();
   const pageHeight = doc.internal.pageSize.height;
   const pageWidth = doc.internal.pageSize.width;
-  const marginBottom = 20; // Space for footer
+  const marginBottom = 55; // Space for signature and footer
   
   // Add header with logo and company info
   addPDFHeader(doc, true);
@@ -166,7 +203,7 @@ export const generateQuotationPDF = (data: QuotationData) => {
   doc.setFont('helvetica', 'bold');
   doc.text('QUOTATION', 105, 45, { align: 'center' });
   
-  // Quotation details
+  // Quotation details (without created by - moved to footer)
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   let yPos = 58;
@@ -187,10 +224,6 @@ export const generateQuotationPDF = (data: QuotationData) => {
     yPos += 7;
     doc.text(`Delivery Details: ${data.delivery_details}`, 14, yPos);
   }
-  if (data.created_by_name) {
-    yPos += 7;
-    doc.text(`Created by: ${data.created_by_name}`, 14, yPos);
-  }
   
   // Items table - Calculate amounts
   const discountAmount = (data.discount_value && data.discount_value > 0)
@@ -202,17 +235,20 @@ export const generateQuotationPDF = (data: QuotationData) => {
   
   const footRows: any[] = [];
   
+  // Always show Value first
+  footRows.push(['', '', 'Value:', formatCurrency(data.total_amount)]);
+  
   if (data.discount_value && data.discount_value > 0) {
     const discountLabel = data.discount_type === 'percentage' 
       ? `Given Discount (${data.discount_value}%):`
       : 'Given Discount:';
-    footRows.push(['', '', discountLabel, `-$${discountAmount.toFixed(2)}`]);
-    footRows.push(['', '', 'Net Amount:', `$${netAmount.toFixed(2)}`]);
+    footRows.push(['', '', discountLabel, `-${formatCurrency(discountAmount)}`]);
+    footRows.push(['', '', 'Net Amount:', formatCurrency(netAmount)]);
   }
   
   footRows.push(
-    ['', '', 'Tax:', `$${data.tax_amount.toFixed(2)}`],
-    ['', '', 'Grand Total:', `$${data.grand_total.toFixed(2)}`]
+    ['', '', 'Tax:', formatCurrency(data.tax_amount)],
+    ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
   );
   
   autoTable(doc, {
@@ -220,9 +256,9 @@ export const generateQuotationPDF = (data: QuotationData) => {
     head: [['Item', 'Quantity', 'Unit Price', 'Total']],
     body: data.items.map(item => [
       item.name,
-      item.quantity.toString(),
-      `$${item.unit_price.toFixed(2)}`,
-      `$${item.total_price.toFixed(2)}`
+      item.quantity.toLocaleString(),
+      formatCurrency(item.unit_price),
+      formatCurrency(item.total_price)
     ]),
     foot: footRows,
     showFoot: 'lastPage',
@@ -244,12 +280,12 @@ export const generateQuotationPDF = (data: QuotationData) => {
   
   // Notes with proper multi-line handling
   if (data.notes) {
-    let currentY = (doc as any).lastAutoTable.finalY + 20;
+    let notesY = currentY + 20;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('Terms & Conditions:', 14, currentY);
+    doc.text('Terms & Conditions:', 14, notesY);
     
-    currentY += 6;
+    notesY += 6;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     
@@ -259,18 +295,22 @@ export const generateQuotationPDF = (data: QuotationData) => {
     
     // Add lines with page break handling
     lines.forEach((line: string) => {
-      if (currentY > pageHeight - marginBottom) {
+      if (notesY > pageHeight - marginBottom) {
         doc.addPage();
         addPDFHeader(doc, true);
-        currentY = 40; // Start below header on new page
+        notesY = 40; // Start below header on new page
       }
-      doc.text(line, 14, currentY);
-      currentY += 5;
+      doc.text(line, 14, notesY);
+      notesY += 5;
     });
   }
   
-  // Add footer to all pages
+  // Add signature section to the last page
   const totalPages = doc.getNumberOfPages();
+  doc.setPage(totalPages);
+  addSignatureSection(doc, data.created_by_name);
+  
+  // Add footer to all pages
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     addPDFFooter(doc);
@@ -283,7 +323,7 @@ export const generatePOPDF = (data: POData) => {
   const doc = new jsPDF();
   const pageHeight = doc.internal.pageSize.height;
   const pageWidth = doc.internal.pageSize.width;
-  const marginBottom = 20; // Space for footer
+  const marginBottom = 55; // Space for signature and footer
   
   // Add header with logo and company info
   addPDFHeader(doc, true);
@@ -293,30 +333,34 @@ export const generatePOPDF = (data: POData) => {
   doc.setFont('helvetica', 'bold');
   doc.text('PURCHASE ORDER', 105, 45, { align: 'center' });
   
-  // PO details
+  // PO details (without created by - moved to footer)
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(`PO #: ${data.order_number}`, 14, 58);
-  doc.text(`Supplier: ${data.supplier_name}`, 14, 65);
-  doc.text(`Expected Delivery: ${data.expected_delivery_date}`, 14, 72);
-  if (data.created_by_name) {
-    doc.text(`Created by: ${data.created_by_name}`, 14, 79);
+  let yPos = 58;
+  doc.text(`PO #: ${data.order_number}`, 14, yPos);
+  yPos += 7;
+  doc.text(`Supplier: ${data.supplier_name}`, 14, yPos);
+  yPos += 7;
+  doc.text(`Expected Delivery: ${data.expected_delivery_date}`, 14, yPos);
+  if (data.customs_duty_status) {
+    yPos += 7;
+    doc.text(`Customs & Duty Status: ${data.customs_duty_status}`, 14, yPos);
   }
   
-  // Items table
+  // Items table with formatted currency
   autoTable(doc, {
-    startY: data.created_by_name ? 87 : 80,
+    startY: yPos + 8,
     head: [['Item', 'Quantity', 'Unit Price', 'Total']],
     body: data.items.map(item => [
       item.name,
-      item.quantity.toString(),
-      `$${item.unit_price.toFixed(2)}`,
-      `$${item.total_price.toFixed(2)}`
+      item.quantity.toLocaleString(),
+      formatCurrency(item.unit_price),
+      formatCurrency(item.total_price)
     ]),
     foot: [
-      ['', '', 'Subtotal:', `$${data.total_amount.toFixed(2)}`],
-      ['', '', 'Tax:', `$${data.tax_amount.toFixed(2)}`],
-      ['', '', 'Grand Total:', `$${data.grand_total.toFixed(2)}`]
+      ['', '', 'Subtotal:', formatCurrency(data.total_amount)],
+      ['', '', 'Tax:', formatCurrency(data.tax_amount)],
+      ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
     ],
     showFoot: 'lastPage',
     margin: { bottom: marginBottom }
@@ -349,8 +393,12 @@ export const generatePOPDF = (data: POData) => {
     });
   }
   
-  // Add footer to all pages
+  // Add signature section to the last page
   const totalPages = doc.getNumberOfPages();
+  doc.setPage(totalPages);
+  addSignatureSection(doc, data.created_by_name);
+  
+  // Add footer to all pages
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     addPDFFooter(doc);
@@ -362,6 +410,14 @@ export const generatePOPDF = (data: POData) => {
 export const printQuotation = (data: QuotationData) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
+  
+  // Calculate discount and amounts
+  const discountAmount = (data.discount_value && data.discount_value > 0)
+    ? (data.discount_type === 'percentage'
+      ? (data.total_amount * data.discount_value / 100)
+      : data.discount_value)
+    : 0;
+  const netAmount = data.total_amount - discountAmount;
   
   const html = `
     <!DOCTYPE html>
@@ -381,7 +437,11 @@ export const printQuotation = (data: QuotationData) => {
           th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
           th { background-color: #f2f2f2; }
           .totals { text-align: right; margin-top: 20px; }
-          .notes { margin-top: 30px; margin-bottom: 60px; white-space: pre-wrap; font-size: 11px; line-height: 1.5; }
+          .notes { margin-top: 30px; white-space: pre-wrap; font-size: 11px; line-height: 1.5; }
+          .signature-section { margin-top: 60px; text-align: right; padding-right: 30px; }
+          .signature-section .prepared-by { margin-bottom: 5px; }
+          .signature-section .name { font-weight: bold; margin-bottom: 30px; }
+          .signature-section .signature-line { width: 200px; border-top: 1px solid #333; margin-left: auto; margin-top: 30px; padding-top: 5px; }
           .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 20px; border-top: 1px solid #ddd; font-size: 10px; color: #555; background: white; }
           @page { margin-bottom: 80px; }
         </style>
@@ -402,7 +462,6 @@ export const printQuotation = (data: QuotationData) => {
           ${data.customs_duty_status ? `<p><strong>Customs & Duty Status:</strong> ${data.customs_duty_status}</p>` : ''}
           ${data.delivery_terms ? `<p><strong>Delivery Terms:</strong> ${data.delivery_terms}</p>` : ''}
           ${data.delivery_details ? `<p><strong>Delivery Details:</strong> ${data.delivery_details}</p>` : ''}
-          ${data.created_by_name ? `<p><strong>Created by:</strong> ${data.created_by_name}</p>` : ''}
         </div>
         <table>
           <thead>
@@ -417,58 +476,33 @@ export const printQuotation = (data: QuotationData) => {
             ${data.items.map(item => `
               <tr>
                 <td>${item.name}</td>
-                <td>${item.quantity}</td>
-                <td>$${item.unit_price.toFixed(2)}</td>
-                <td>$${item.total_price.toFixed(2)}</td>
+                <td>${item.quantity.toLocaleString()}</td>
+                <td>$${item.unit_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>$${item.total_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
         <div class="totals">
+          <p><strong>Value:</strong> $${data.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           ${data.discount_value && data.discount_value > 0 ? `
-            <p><strong>${data.discount_type === 'percentage' ? `Given Discount (${data.discount_value}%):` : 'Given Discount:'}</strong> -$${(data.discount_type === 'percentage' ? data.total_amount * data.discount_value / 100 : data.discount_value).toFixed(2)}</p>
-            <p><strong>Net Amount:</strong> $${(data.total_amount - (data.discount_type === 'percentage' ? data.total_amount * data.discount_value / 100 : data.discount_value)).toFixed(2)}</p>
+            <p><strong>${data.discount_type === 'percentage' ? `Given Discount (${data.discount_value}%):` : 'Given Discount:'}</strong> -$${discountAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p><strong>Net Amount:</strong> $${netAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           ` : ''}
-          <p><strong>Tax:</strong> $${data.tax_amount.toFixed(2)}</p>
-          <p><strong>Grand Total:</strong> $${data.grand_total.toFixed(2)}</p>
+          <p><strong>Tax:</strong> $${data.tax_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p><strong>Grand Total:</strong> $${data.grand_total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
         <div style="margin-top: 20px;">
-          <p><strong>Amount in Words:</strong> ${(() => {
-            const dollars = Math.floor(data.grand_total);
-            const cents = Math.round((data.grand_total - dollars) * 100);
-            const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
-            const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-            const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-            const thousands = ['', 'Thousand', 'Million'];
-            
-            const convertLessThanThousand = (n) => {
-              if (n === 0) return '';
-              if (n < 10) return ones[n];
-              if (n < 20) return teens[n - 10];
-              if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + ones[n % 10] : '');
-              return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 !== 0 ? ' ' + convertLessThanThousand(n % 100) : '');
-            };
-            
-            let word = '';
-            let i = 0;
-            let num = dollars;
-            
-            while (num > 0) {
-              if (num % 1000 !== 0) {
-                word = convertLessThanThousand(num % 1000) + (thousands[i] !== '' ? ' ' + thousands[i] : '') + (word !== '' ? ' ' + word : '');
-              }
-              num = Math.floor(num / 1000);
-              i++;
-            }
-            
-            let result = (word || 'Zero') + ' Dollar' + (dollars !== 1 ? 's' : '');
-            if (cents > 0) {
-              result += ' and ' + convertLessThanThousand(cents) + ' Cent' + (cents !== 1 ? 's' : '');
-            }
-            return result.trim();
-          })()}</p>
+          <p><strong>Amount in Words:</strong> ${amountToWords(data.grand_total)}</p>
         </div>
         ${data.notes ? `<div class="notes"><strong>Terms & Conditions:</strong><br/>${data.notes.replace(/\n/g, '<br/>')}</div>` : ''}
+        
+        <div class="signature-section">
+          <p class="prepared-by">Prepared by:</p>
+          ${data.created_by_name ? `<p class="name">${data.created_by_name}</p>` : ''}
+          <div class="signature-line">Signature</div>
+        </div>
+        
         <div class="footer">
           <p>${COMPANY_INFO.footer.postBox} | ${COMPANY_INFO.footer.location}</p>
           <p>${COMPANY_INFO.footer.phone} | ${COMPANY_INFO.footer.fax}</p>
@@ -504,7 +538,11 @@ export const printPO = (data: POData) => {
           th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
           th { background-color: #f2f2f2; }
           .totals { text-align: right; margin-top: 20px; }
-          .notes { margin-top: 30px; margin-bottom: 60px; white-space: pre-wrap; font-size: 11px; line-height: 1.5; }
+          .notes { margin-top: 30px; white-space: pre-wrap; font-size: 11px; line-height: 1.5; }
+          .signature-section { margin-top: 60px; text-align: right; padding-right: 30px; }
+          .signature-section .prepared-by { margin-bottom: 5px; }
+          .signature-section .name { font-weight: bold; margin-bottom: 30px; }
+          .signature-section .signature-line { width: 200px; border-top: 1px solid #333; margin-left: auto; margin-top: 30px; padding-top: 5px; }
           .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 20px; border-top: 1px solid #ddd; font-size: 10px; color: #555; background: white; }
           @page { margin-bottom: 80px; }
         </style>
@@ -522,7 +560,7 @@ export const printPO = (data: POData) => {
           <p><strong>PO #:</strong> ${data.order_number}</p>
           <p><strong>Supplier:</strong> ${data.supplier_name}</p>
           <p><strong>Expected Delivery:</strong> ${data.expected_delivery_date}</p>
-          ${data.created_by_name ? `<p><strong>Created by:</strong> ${data.created_by_name}</p>` : ''}
+          ${data.customs_duty_status ? `<p><strong>Customs & Duty Status:</strong> ${data.customs_duty_status}</p>` : ''}
         </div>
         <table>
           <thead>
@@ -537,19 +575,26 @@ export const printPO = (data: POData) => {
             ${data.items.map(item => `
               <tr>
                 <td>${item.name}</td>
-                <td>${item.quantity}</td>
-                <td>$${item.unit_price.toFixed(2)}</td>
-                <td>$${item.total_price.toFixed(2)}</td>
+                <td>${item.quantity.toLocaleString()}</td>
+                <td>$${item.unit_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>$${item.total_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
         <div class="totals">
-          <p><strong>Subtotal:</strong> $${data.total_amount.toFixed(2)}</p>
-          <p><strong>Tax:</strong> $${data.tax_amount.toFixed(2)}</p>
-          <p><strong>Grand Total:</strong> $${data.grand_total.toFixed(2)}</p>
+          <p><strong>Subtotal:</strong> $${data.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p><strong>Tax:</strong> $${data.tax_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p><strong>Grand Total:</strong> $${data.grand_total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
         ${data.notes ? `<div class="notes"><strong>Notes:</strong><br/>${data.notes.replace(/\n/g, '<br/>')}</div>` : ''}
+        
+        <div class="signature-section">
+          <p class="prepared-by">Prepared by:</p>
+          ${data.created_by_name ? `<p class="name">${data.created_by_name}</p>` : ''}
+          <div class="signature-line">Signature</div>
+        </div>
+        
         <div class="footer">
           <p>${COMPANY_INFO.footer.postBox} | ${COMPANY_INFO.footer.location}</p>
           <p>${COMPANY_INFO.footer.phone} | ${COMPANY_INFO.footer.fax}</p>
@@ -567,7 +612,7 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   const doc = new jsPDF();
   const pageHeight = doc.internal.pageSize.height;
   const pageWidth = doc.internal.pageSize.width;
-  const marginBottom = 20; // Space for footer
+  const marginBottom = 55; // Space for signature and footer
   
   // Add header with logo and company info
   addPDFHeader(doc, true);
@@ -577,15 +622,20 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   doc.setFont('helvetica', 'bold');
   doc.text('SALES INVOICE', 105, 45, { align: 'center' });
   
-  // Invoice details
+  // Invoice details (without created by - moved to footer)
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Invoice #: ${data.invoice_number}`, 14, 58);
-  doc.text(`Customer: ${data.customer_name}`, 14, 65);
-  doc.text(`Type: ${data.invoice_type.toUpperCase()}`, 14, 72);
-  doc.text(`Due Date: ${data.due_date}`, 14, 79);
-  if (data.created_by_name) {
-    doc.text(`Created by: ${data.created_by_name}`, 14, 86);
+  let yPos = 58;
+  doc.text(`Invoice #: ${data.invoice_number}`, 14, yPos);
+  yPos += 7;
+  doc.text(`Customer: ${data.customer_name}`, 14, yPos);
+  yPos += 7;
+  doc.text(`Type: ${data.invoice_type.toUpperCase()}`, 14, yPos);
+  yPos += 7;
+  doc.text(`Due Date: ${data.due_date}`, 14, yPos);
+  if (data.customs_duty_status) {
+    yPos += 7;
+    doc.text(`Customs & Duty Status: ${data.customs_duty_status}`, 14, yPos);
   }
   
   // Items table - Calculate amounts
@@ -598,27 +648,30 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   
   const invoiceFootRows: any[] = [];
   
+  // Always show Value first
+  invoiceFootRows.push(['', '', 'Value:', formatCurrency(data.total_amount)]);
+  
   if (data.discount_value && data.discount_value > 0) {
     const discountLabel = data.discount_type === 'percentage' 
       ? `Given Discount (${data.discount_value}%):`
       : 'Given Discount:';
-    invoiceFootRows.push(['', '', discountLabel, `-$${invoiceDiscountAmount.toFixed(2)}`]);
-    invoiceFootRows.push(['', '', 'Net Amount:', `$${invoiceNetAmount.toFixed(2)}`]);
+    invoiceFootRows.push(['', '', discountLabel, `-${formatCurrency(invoiceDiscountAmount)}`]);
+    invoiceFootRows.push(['', '', 'Net Amount:', formatCurrency(invoiceNetAmount)]);
   }
   
   invoiceFootRows.push(
-    ['', '', 'Tax:', `$${data.tax_amount.toFixed(2)}`],
-    ['', '', 'Grand Total:', `$${data.grand_total.toFixed(2)}`]
+    ['', '', 'Tax:', formatCurrency(data.tax_amount)],
+    ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
   );
   
   autoTable(doc, {
-    startY: data.created_by_name ? 94 : 87,
+    startY: yPos + 8,
     head: [['Item', 'Quantity', 'Unit Price', 'Total']],
     body: data.items.map(item => [
       item.name,
-      item.quantity.toString(),
-      `$${item.unit_price.toFixed(2)}`,
-      `$${item.total_price.toFixed(2)}`
+      item.quantity.toLocaleString(),
+      formatCurrency(item.unit_price),
+      formatCurrency(item.total_price)
     ]),
     foot: invoiceFootRows,
     showFoot: 'lastPage',
@@ -665,8 +718,12 @@ export const generateInvoicePDF = (data: InvoiceData) => {
     });
   }
   
-  // Add footer to all pages
+  // Add signature section to the last page
   const totalPages = doc.getNumberOfPages();
+  doc.setPage(totalPages);
+  addSignatureSection(doc, data.created_by_name);
+  
+  // Add footer to all pages
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     addPDFFooter(doc);
@@ -678,6 +735,14 @@ export const generateInvoicePDF = (data: InvoiceData) => {
 export const printInvoice = (data: InvoiceData) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
+  
+  // Calculate discount and amounts
+  const discountAmount = (data.discount_value && data.discount_value > 0)
+    ? (data.discount_type === 'percentage'
+      ? (data.total_amount * data.discount_value / 100)
+      : data.discount_value)
+    : 0;
+  const netAmount = data.total_amount - discountAmount;
   
   const html = `
     <!DOCTYPE html>
@@ -697,7 +762,11 @@ export const printInvoice = (data: InvoiceData) => {
           th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
           th { background-color: #f2f2f2; }
           .totals { text-align: right; margin-top: 20px; }
-          .notes { margin-top: 30px; margin-bottom: 60px; white-space: pre-wrap; font-size: 11px; line-height: 1.5; }
+          .notes { margin-top: 30px; white-space: pre-wrap; font-size: 11px; line-height: 1.5; }
+          .signature-section { margin-top: 60px; text-align: right; padding-right: 30px; }
+          .signature-section .prepared-by { margin-bottom: 5px; }
+          .signature-section .name { font-weight: bold; margin-bottom: 30px; }
+          .signature-section .signature-line { width: 200px; border-top: 1px solid #333; margin-left: auto; margin-top: 30px; padding-top: 5px; }
           .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 20px; border-top: 1px solid #ddd; font-size: 10px; color: #555; background: white; }
           @page { margin-bottom: 80px; }
         </style>
@@ -716,7 +785,7 @@ export const printInvoice = (data: InvoiceData) => {
           <p><strong>Customer:</strong> ${data.customer_name}</p>
           <p><strong>Type:</strong> ${data.invoice_type.toUpperCase()}</p>
           <p><strong>Due Date:</strong> ${data.due_date}</p>
-          ${data.created_by_name ? `<p><strong>Created by:</strong> ${data.created_by_name}</p>` : ''}
+          ${data.customs_duty_status ? `<p><strong>Customs & Duty Status:</strong> ${data.customs_duty_status}</p>` : ''}
         </div>
         <table>
           <thead>
@@ -731,58 +800,33 @@ export const printInvoice = (data: InvoiceData) => {
             ${data.items.map(item => `
               <tr>
                 <td>${item.name}</td>
-                <td>${item.quantity}</td>
-                <td>$${item.unit_price.toFixed(2)}</td>
-                <td>$${item.total_price.toFixed(2)}</td>
+                <td>${item.quantity.toLocaleString()}</td>
+                <td>$${item.unit_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>$${item.total_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
         <div class="totals">
+          <p><strong>Value:</strong> $${data.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           ${data.discount_value && data.discount_value > 0 ? `
-            <p><strong>${data.discount_type === 'percentage' ? `Given Discount (${data.discount_value}%):` : 'Given Discount:'}</strong> -$${(data.discount_type === 'percentage' ? data.total_amount * data.discount_value / 100 : data.discount_value).toFixed(2)}</p>
-            <p><strong>Net Amount:</strong> $${(data.total_amount - (data.discount_type === 'percentage' ? data.total_amount * data.discount_value / 100 : data.discount_value)).toFixed(2)}</p>
+            <p><strong>${data.discount_type === 'percentage' ? `Given Discount (${data.discount_value}%):` : 'Given Discount:'}</strong> -$${discountAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p><strong>Net Amount:</strong> $${netAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           ` : ''}
-          <p><strong>Tax:</strong> $${data.tax_amount.toFixed(2)}</p>
-          <p><strong>Grand Total:</strong> $${data.grand_total.toFixed(2)}</p>
+          <p><strong>Tax:</strong> $${data.tax_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p><strong>Grand Total:</strong> $${data.grand_total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
-        <div style="margin-top: 20px; margin-bottom: 60px;">
-          <p><strong>Amount in Words:</strong> ${(() => {
-            const dollars = Math.floor(data.grand_total);
-            const cents = Math.round((data.grand_total - dollars) * 100);
-            const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
-            const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-            const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-            const thousands = ['', 'Thousand', 'Million'];
-            
-            const convertLessThanThousand = (n) => {
-              if (n === 0) return '';
-              if (n < 10) return ones[n];
-              if (n < 20) return teens[n - 10];
-              if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + ones[n % 10] : '');
-              return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 !== 0 ? ' ' + convertLessThanThousand(n % 100) : '');
-            };
-            
-            let word = '';
-            let i = 0;
-            let num = dollars;
-            
-            while (num > 0) {
-              if (num % 1000 !== 0) {
-                word = convertLessThanThousand(num % 1000) + (thousands[i] !== '' ? ' ' + thousands[i] : '') + (word !== '' ? ' ' + word : '');
-              }
-              num = Math.floor(num / 1000);
-              i++;
-            }
-            
-            let result = (word || 'Zero') + ' Dollar' + (dollars !== 1 ? 's' : '');
-            if (cents > 0) {
-              result += ' and ' + convertLessThanThousand(cents) + ' Cent' + (cents !== 1 ? 's' : '');
-            }
-            return result.trim();
-          })()}</p>
+        <div style="margin-top: 20px;">
+          <p><strong>Amount in Words:</strong> ${amountToWords(data.grand_total)}</p>
         </div>
         ${data.notes ? `<div class="notes"><strong>Notes:</strong><br/>${data.notes.replace(/\n/g, '<br/>')}</div>` : ''}
+        
+        <div class="signature-section">
+          <p class="prepared-by">Prepared by:</p>
+          ${data.created_by_name ? `<p class="name">${data.created_by_name}</p>` : ''}
+          <div class="signature-line">Signature</div>
+        </div>
+        
         <div class="footer">
           <p>${COMPANY_INFO.footer.postBox} | ${COMPANY_INFO.footer.location}</p>
           <p>${COMPANY_INFO.footer.phone} | ${COMPANY_INFO.footer.fax}</p>

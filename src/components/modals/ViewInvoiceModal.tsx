@@ -31,7 +31,8 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice }: ViewInvoiceMod
       notes: invoice.notes,
       created_by_name: invoice.profiles?.full_name,
       discount_type: invoice.discount_type,
-      discount_value: invoice.discount_value
+      discount_value: invoice.discount_value,
+      customs_duty_status: invoice.customs_duty_status
     });
   };
 
@@ -53,7 +54,8 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice }: ViewInvoiceMod
       notes: invoice.notes,
       created_by_name: invoice.profiles?.full_name,
       discount_type: invoice.discount_type,
-      discount_value: invoice.discount_value
+      discount_value: invoice.discount_value,
+      customs_duty_status: invoice.customs_duty_status
     });
   };
 
@@ -108,8 +110,8 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice }: ViewInvoiceMod
                   <TableRow key={item.id}>
                     <TableCell>{item.inventory_items?.name || 'N/A'}</TableCell>
                     <TableCell>{item.quantity}</TableCell>
-                    <TableCell>${item.unit_price}</TableCell>
-                    <TableCell>${item.total_price}</TableCell>
+                    <TableCell>${item.unit_price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    <TableCell>${item.total_price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -117,9 +119,9 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice }: ViewInvoiceMod
           </div>
 
           <div className="space-y-2 text-right">
-            <p><span className="text-muted-foreground">Subtotal:</span> <span className="font-semibold">${invoice.total_amount}</span></p>
-            <p><span className="text-muted-foreground">Tax:</span> <span className="font-semibold">${invoice.tax_amount}</span></p>
-            <p className="text-lg"><span className="text-muted-foreground">Grand Total:</span> <span className="font-bold">${invoice.grand_total}</span></p>
+            <p><span className="text-muted-foreground">Subtotal:</span> <span className="font-semibold">${invoice.total_amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
+            <p><span className="text-muted-foreground">Tax:</span> <span className="font-semibold">${invoice.tax_amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
+            <p className="text-lg"><span className="text-muted-foreground">Grand Total:</span> <span className="font-bold">${invoice.grand_total?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
           </div>
 
           {invoice.notes && (

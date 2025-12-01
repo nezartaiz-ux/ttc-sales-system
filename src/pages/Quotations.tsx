@@ -252,7 +252,7 @@ const Quotations = () => {
                         <TableCell className="font-medium">{quotation.quotation_number}</TableCell>
                         <TableCell>{quotation.customers?.name || 'N/A'}</TableCell>
                         <TableCell>{quotation.validity_period || 'N/A'}</TableCell>
-                        <TableCell>${quotation.grand_total}</TableCell>
+                        <TableCell>${quotation.grand_total?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell>
                           <span className={`capitalize ${
                             quotation.status === 'accepted' ? 'text-green-600' : 
