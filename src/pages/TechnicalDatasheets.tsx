@@ -100,13 +100,26 @@ const TechnicalDatasheets = () => {
   });
 
   const handleView = async (filePath: string) => {
-    const { data } = supabase.storage
-      .from('datasheets')
-      .getPublicUrl(filePath);
+    try {
+      const { data, error } = await supabase.storage
+        .from('datasheets')
+        .download(filePath);
 
-    if (data?.publicUrl) {
-      window.open(data.publicUrl, '_blank');
-    } else {
+      if (error || !data) {
+        toast({
+          title: "Error",
+          description: "Failed to open file",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const fileURL = URL.createObjectURL(data);
+      window.open(fileURL, '_blank');
+      
+      // Clean up the URL after a delay
+      setTimeout(() => URL.revokeObjectURL(fileURL), 100);
+    } catch (error) {
       toast({
         title: "Error",
         description: "Failed to open file",
