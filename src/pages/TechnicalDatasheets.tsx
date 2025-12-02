@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, FileText, Download, Trash2 } from "lucide-react";
+import { Plus, FileText, Download, Trash2, Eye } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -98,6 +98,22 @@ const TechnicalDatasheets = () => {
       });
     },
   });
+
+  const handleView = async (filePath: string) => {
+    const { data } = supabase.storage
+      .from('datasheets')
+      .getPublicUrl(filePath);
+
+    if (data?.publicUrl) {
+      window.open(data.publicUrl, '_blank');
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to open file",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleDownload = async (filePath: string, name: string) => {
     const { data, error } = await supabase.storage
@@ -195,6 +211,13 @@ const TechnicalDatasheets = () => {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex gap-2 justify-end">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleView(datasheet.file_path)}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
