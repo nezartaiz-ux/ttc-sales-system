@@ -10,6 +10,17 @@ interface ViewInvoiceModalProps {
   invoice: any;
 }
 
+const displayName = (fullName?: string) => {
+  if (!fullName) return 'N/A';
+  if (fullName === 'nezartaiz@gmail.com') return 'Nezar';
+  if (fullName.includes('@')) {
+    const local = fullName.split('@')[0];
+    const words = local.replace(/[._-]+/g, ' ').split(' ').filter(Boolean);
+    return words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+  return fullName;
+};
+
 export const ViewInvoiceModal = ({ open, onOpenChange, invoice }: ViewInvoiceModalProps) => {
   if (!invoice) return null;
 
@@ -29,7 +40,7 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice }: ViewInvoiceMod
         total_price: item.total_price
       })) || [],
       notes: invoice.notes,
-      created_by_name: invoice.profiles?.full_name,
+      created_by_name: displayName(invoice.profiles?.full_name),
       discount_type: invoice.discount_type,
       discount_value: invoice.discount_value,
       customs_duty_status: invoice.customs_duty_status
@@ -52,7 +63,7 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice }: ViewInvoiceMod
         total_price: item.total_price
       })) || [],
       notes: invoice.notes,
-      created_by_name: invoice.profiles?.full_name,
+      created_by_name: displayName(invoice.profiles?.full_name),
       discount_type: invoice.discount_type,
       discount_value: invoice.discount_value,
       customs_duty_status: invoice.customs_duty_status

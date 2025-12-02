@@ -25,6 +25,17 @@ const PurchaseOrders = () => {
   const { canCreate, canView, canDelete } = useUserPermissions();
   const { toast } = useToast();
 
+  const displayName = (fullName?: string) => {
+    if (!fullName) return 'N/A';
+    if (fullName === 'nezartaiz@gmail.com') return 'Nezar';
+    if (fullName.includes('@')) {
+      const local = fullName.split('@')[0];
+      const words = local.replace(/[._-]+/g, ' ').split(' ').filter(Boolean);
+      return words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
+    return fullName;
+  };
+
   const fetchPurchaseOrders = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -63,7 +74,7 @@ const PurchaseOrders = () => {
         total_price: item.total_price
       })) || [],
       notes: po.notes,
-      created_by_name: po.profiles?.full_name || 'N/A',
+      created_by_name: displayName(po.profiles?.full_name),
       customs_duty_status: po.customs_duty_status || undefined
     });
   };
@@ -83,7 +94,7 @@ const PurchaseOrders = () => {
         total_price: item.total_price
       })) || [],
       notes: po.notes,
-      created_by_name: po.profiles?.full_name || 'N/A',
+      created_by_name: displayName(po.profiles?.full_name),
       customs_duty_status: po.customs_duty_status || undefined
     });
   };
