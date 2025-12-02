@@ -10,6 +10,17 @@ interface ViewPOModalProps {
   purchaseOrder: any;
 }
 
+const displayName = (fullName?: string) => {
+  if (!fullName) return 'N/A';
+  if (fullName === 'nezartaiz@gmail.com') return 'Nezar';
+  if (fullName.includes('@')) {
+    const local = fullName.split('@')[0];
+    const words = local.replace(/[._-]+/g, ' ').split(' ').filter(Boolean);
+    return words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+  return fullName;
+};
+
 export const ViewPOModal = ({ open, onOpenChange, purchaseOrder }: ViewPOModalProps) => {
   if (!purchaseOrder) return null;
 
@@ -23,7 +34,7 @@ export const ViewPOModal = ({ open, onOpenChange, purchaseOrder }: ViewPOModalPr
       grand_total: purchaseOrder.grand_total || 0,
       items: purchaseOrder.purchase_order_items || [],
       notes: purchaseOrder.notes,
-      created_by_name: purchaseOrder.profiles?.full_name || 'N/A'
+      created_by_name: displayName(purchaseOrder.profiles?.full_name)
     });
   };
 
@@ -37,7 +48,7 @@ export const ViewPOModal = ({ open, onOpenChange, purchaseOrder }: ViewPOModalPr
       grand_total: purchaseOrder.grand_total || 0,
       items: purchaseOrder.purchase_order_items || [],
       notes: purchaseOrder.notes,
-      created_by_name: purchaseOrder.profiles?.full_name || 'N/A'
+      created_by_name: displayName(purchaseOrder.profiles?.full_name)
     });
   };
 

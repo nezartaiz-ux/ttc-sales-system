@@ -10,6 +10,17 @@ interface ViewQuotationModalProps {
   quotation: any;
 }
 
+const displayName = (fullName?: string) => {
+  if (!fullName) return 'N/A';
+  if (fullName === 'nezartaiz@gmail.com') return 'Nezar';
+  if (fullName.includes('@')) {
+    const local = fullName.split('@')[0];
+    const words = local.replace(/[._-]+/g, ' ').split(' ').filter(Boolean);
+    return words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+  return fullName;
+};
+
 export const ViewQuotationModal = ({ open, onOpenChange, quotation }: ViewQuotationModalProps) => {
   if (!quotation) return null;
 
@@ -33,7 +44,7 @@ export const ViewQuotationModal = ({ open, onOpenChange, quotation }: ViewQuotat
         total_price: item.total_price,
       })),
       notes: quotation.notes,
-      created_by_name: quotation.profiles?.full_name || 'N/A'
+      created_by_name: displayName(quotation.profiles?.full_name)
     });
   };
 
@@ -57,7 +68,7 @@ export const ViewQuotationModal = ({ open, onOpenChange, quotation }: ViewQuotat
         total_price: item.total_price,
       })),
       notes: quotation.notes,
-      created_by_name: quotation.profiles?.full_name || 'N/A'
+      created_by_name: displayName(quotation.profiles?.full_name)
     });
   };
 
