@@ -7,11 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
+import { generateInvoicePDF } from '@/utils/pdfExport';
 
 const invoiceSchema = z.object({
   customer_id: z.string().uuid('Select a valid customer'),
@@ -49,7 +50,8 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
     conditions: '',
     notes: '',
     discount_type: 'percentage' as 'percentage' | 'fixed',
-    discount_value: 0
+    discount_value: 0,
+    status: 'sent' as 'draft' | 'sent' | 'paid'
   });
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
@@ -154,6 +156,37 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
     return 'Tax (0%)';
   };
 
+  const handlePreview = () => {
+    if (!formData.customer_id || items.length === 0) {
+      toast({ title: 'Error', description: 'Please select a customer and add at least one item', variant: 'destructive' });
+      return;
+    }
+
+    const { total_amount, tax_amount, grand_total } = calculateTotals();
+    const customer = customers.find(c => c.id === formData.customer_id);
+
+    generateInvoicePDF({
+      invoice_number: 'PREVIEW',
+      customer_name: customer?.name || 'N/A',
+      invoice_type: formData.invoice_type,
+      due_date: formData.due_date ? new Date(formData.due_date).toLocaleDateString() : 'N/A',
+      total_amount,
+      tax_amount,
+      grand_total,
+      items: items.map(item => ({
+        name: item.item_name,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_price: item.total_price,
+      })),
+      notes: formData.notes,
+      created_by_name: 'Preview',
+      discount_type: formData.discount_type,
+      discount_value: formData.discount_value > 0 ? formData.discount_value : undefined,
+      customs_duty_status: formData.customs_duty_status,
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -203,6 +236,7 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
         conditions: formData.conditions.trim() || null,
         discount_type: formData.discount_value > 0 ? formData.discount_type : null,
         discount_value: formData.discount_value > 0 ? formData.discount_value : null,
+        status: formData.status,
         created_by: user.id
       };
 
@@ -237,7 +271,7 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
       setFormData({
         customer_id: '', purchase_order_id: '', invoice_type: 'cash',
         payment_terms: 30, due_date: '', customs_duty_status: '', conditions: '', notes: '',
-        discount_type: 'percentage', discount_value: 0
+        discount_type: 'percentage', discount_value: 0, status: 'sent'
       });
       setItems([]);
 
@@ -325,6 +359,20 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="credit">Credit</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Status *</Label>
+              <Select value={formData.status} onValueChange={(v: 'draft' | 'sent' | 'paid') => setFormData(p => ({ ...p, status: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="sent">Sent</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -528,8 +576,12 @@ export const CreateInvoiceModal = ({ open, onOpenChange, onSuccess }: CreateInvo
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
+            </Button>
+            <Button type="button" variant="secondary" onClick={handlePreview} disabled={items.length === 0}>
+              <Eye className="h-4 w-4 mr-2" />
+              Preview PDF
             </Button>
             <Button type="submit" disabled={isLoading} className="flex-1">
               {isLoading ? 'Creating...' : 'Create Invoice'}

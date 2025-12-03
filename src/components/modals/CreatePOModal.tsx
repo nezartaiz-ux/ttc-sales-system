@@ -39,7 +39,8 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
     supplier_id: '',
     expected_delivery_date: new Date().toISOString().split('T')[0], // Set to today's date
     customs_duty_status: '',
-    notes: ''
+    notes: '',
+    status: 'sent' as 'draft' | 'sent' | 'received'
   });
   const [items, setItems] = useState<POItem[]>([]);
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
@@ -226,6 +227,7 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
         expected_delivery_date: formData.expected_delivery_date,
         customs_duty_status: formData.customs_duty_status || null,
         notes: formData.notes.trim() || null,
+        status: formData.status,
         created_by: user.id
       };
 
@@ -257,7 +259,7 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
       onSuccess?.();
 
       // Reset form
-      setFormData({ supplier_id: '', expected_delivery_date: '', customs_duty_status: '', notes: '' });
+      setFormData({ supplier_id: '', expected_delivery_date: '', customs_duty_status: '', notes: '', status: 'sent' });
       setItems([]);
 
     } catch (error: any) {
@@ -304,6 +306,20 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
                 className={errors.expected_delivery_date ? 'border-destructive' : ''}
               />
               {errors.expected_delivery_date && <p className="text-sm text-destructive">{errors.expected_delivery_date}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Status *</Label>
+              <Select value={formData.status} onValueChange={(v: 'draft' | 'sent' | 'received') => setFormData(p => ({ ...p, status: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="sent">Sent</SelectItem>
+                  <SelectItem value="received">Received</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

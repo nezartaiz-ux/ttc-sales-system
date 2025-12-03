@@ -97,7 +97,8 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
     delivery_details: '',
     notes: DEFAULT_TERMS_CONDITIONS,
     discount_type: 'percentage' as 'percentage' | 'fixed',
-    discount_value: 0
+    discount_value: 0,
+    status: 'sent' as 'draft' | 'sent' | 'accepted'
   });
   const [items, setItems] = useState<QuotationItem[]>([]);
   const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
@@ -252,6 +253,7 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
         notes: formData.notes.trim() || null,
         discount_type: formData.discount_value > 0 ? formData.discount_type : null,
         discount_value: formData.discount_value > 0 ? formData.discount_value : null,
+        status: formData.status,
         created_by: user.id
       };
 
@@ -293,7 +295,8 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
         delivery_details: '', 
         notes: DEFAULT_TERMS_CONDITIONS,
         discount_type: 'percentage',
-        discount_value: 0
+        discount_value: 0,
+        status: 'sent'
       });
       setItems([]);
 
@@ -341,6 +344,20 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
                 className={errors.validity_period ? 'border-destructive' : ''}
               />
               {errors.validity_period && <p className="text-sm text-destructive">{errors.validity_period}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Status *</Label>
+              <Select value={formData.status} onValueChange={(v: 'draft' | 'sent' | 'accepted') => setFormData(p => ({ ...p, status: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="sent">Sent</SelectItem>
+                  <SelectItem value="accepted">Accepted</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
