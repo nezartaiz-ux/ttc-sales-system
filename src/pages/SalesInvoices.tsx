@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Receipt, DollarSign, CreditCard, Eye, Trash2 } from "lucide-react";
+import { Plus, Receipt, DollarSign, CreditCard, Eye, Trash2, FileDown, Printer } from "lucide-react";
+import { generateInvoicePDF, printInvoice } from "@/utils/pdfExport";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CreateInvoiceModal } from "@/components/modals/CreateInvoiceModal";
 import { ViewInvoiceModal } from "@/components/modals/ViewInvoiceModal";
@@ -99,6 +100,68 @@ const SalesInvoices = () => {
       setDeleteDialogOpen(false);
       setInvoiceToDelete(null);
     }
+  };
+
+  const displayName = (name: string | null | undefined): string => {
+    if (!name) return 'N/A';
+    if (name === 'nezartaiz@gmail.com' || name.toLowerCase().includes('nezartaiz')) return 'Nezar';
+    if (name.includes('@')) {
+      const localPart = name.split('@')[0];
+      return localPart.split('.').map(part => 
+        part.charAt(0).toUpperCase() + part.slice(1)
+      ).join(' ');
+    }
+    return name;
+  };
+
+  const handlePDF = (invoice: any) => {
+    const items = invoice.sales_invoice_items?.map((item: any) => ({
+      name: item.inventory_items?.name || 'Unknown Item',
+      quantity: item.quantity,
+      unit_price: parseFloat(item.unit_price),
+      total_price: parseFloat(item.total_price),
+    })) || [];
+
+    generateInvoicePDF({
+      invoice_number: invoice.invoice_number,
+      customer_name: invoice.customers?.name || 'N/A',
+      invoice_type: invoice.invoice_type,
+      due_date: invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : 'N/A',
+      total_amount: parseFloat(invoice.total_amount),
+      tax_amount: parseFloat(invoice.tax_amount),
+      grand_total: parseFloat(invoice.grand_total),
+      items,
+      notes: invoice.notes,
+      created_by_name: displayName(invoice.profiles?.full_name),
+      discount_type: invoice.discount_type,
+      discount_value: invoice.discount_value ? parseFloat(invoice.discount_value) : undefined,
+      customs_duty_status: invoice.customs_duty_status,
+    });
+  };
+
+  const handlePrint = (invoice: any) => {
+    const items = invoice.sales_invoice_items?.map((item: any) => ({
+      name: item.inventory_items?.name || 'Unknown Item',
+      quantity: item.quantity,
+      unit_price: parseFloat(item.unit_price),
+      total_price: parseFloat(item.total_price),
+    })) || [];
+
+    printInvoice({
+      invoice_number: invoice.invoice_number,
+      customer_name: invoice.customers?.name || 'N/A',
+      invoice_type: invoice.invoice_type,
+      due_date: invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : 'N/A',
+      total_amount: parseFloat(invoice.total_amount),
+      tax_amount: parseFloat(invoice.tax_amount),
+      grand_total: parseFloat(invoice.grand_total),
+      items,
+      notes: invoice.notes,
+      created_by_name: displayName(invoice.profiles?.full_name),
+      discount_type: invoice.discount_type,
+      discount_value: invoice.discount_value ? parseFloat(invoice.discount_value) : undefined,
+      customs_duty_status: invoice.customs_duty_status,
+    });
   };
 
   return (
@@ -217,10 +280,10 @@ const SalesInvoices = () => {
                           {invoice.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{invoice.profiles?.full_name || 'N/A'}</TableCell>
+                      <TableCell>{displayName(invoice.profiles?.full_name)}</TableCell>
                       <TableCell>{new Date(invoice.created_at).toLocaleDateString()}</TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1">
                           <Button 
                             variant="ghost" 
                             size="icon"
@@ -228,14 +291,32 @@ const SalesInvoices = () => {
                               setSelectedInvoice(invoice);
                               setIsViewModalOpen(true);
                             }}
+                            title="View"
                           >
                             <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handlePDF(invoice)}
+                            title="Download PDF"
+                          >
+                            <FileDown className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handlePrint(invoice)}
+                            title="Print"
+                          >
+                            <Printer className="h-4 w-4" />
                           </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
                             onClick={() => handleDeleteClick(invoice)}
                             disabled={!isAdmin && !canDelete('sales_invoices')}
+                            title="Delete"
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
