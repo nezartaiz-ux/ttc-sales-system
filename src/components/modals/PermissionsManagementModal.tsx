@@ -139,10 +139,12 @@ export function PermissionsManagementModal({ open, onOpenChange }: PermissionsMa
     setSaving(true);
     try {
       // Delete existing permissions
-      await supabase
+      const { error: deleteError } = await supabase
         .from('user_permissions')
         .delete()
         .eq('user_id', selectedUser);
+
+      if (deleteError) throw deleteError;
 
       // Insert new permissions
       const permissionsToInsert = Array.from(permissions).map((key) => {
@@ -155,11 +157,11 @@ export function PermissionsManagementModal({ open, onOpenChange }: PermissionsMa
       });
 
       if (permissionsToInsert.length > 0) {
-        const { error } = await supabase
+        const { error: insertError } = await supabase
           .from('user_permissions')
           .insert(permissionsToInsert);
 
-        if (error) throw error;
+        if (insertError) throw insertError;
       }
 
       toast({
@@ -167,9 +169,10 @@ export function PermissionsManagementModal({ open, onOpenChange }: PermissionsMa
         description: 'Permissions updated successfully',
       });
     } catch (error: any) {
+      console.error('Save permissions error:', error);
       toast({
         title: 'Error',
-        description: error.message,
+        description: error.message || 'Failed to save permissions',
         variant: 'destructive',
       });
     } finally {
