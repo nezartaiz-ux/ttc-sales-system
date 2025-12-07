@@ -316,7 +316,16 @@ export const generateQuotationPDF = (data: QuotationData) => {
     addPDFFooter(doc);
   }
   
-  doc.save(`quotation-${data.quotation_number}.pdf`);
+  // Mobile-compatible save method
+  const pdfBlob = doc.output('blob');
+  const blobUrl = URL.createObjectURL(pdfBlob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = `quotation-${data.quotation_number}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
 };
 
 export const generatePOPDF = (data: POData) => {
@@ -404,7 +413,16 @@ export const generatePOPDF = (data: POData) => {
     addPDFFooter(doc);
   }
   
-  doc.save(`purchase-order-${data.order_number}.pdf`);
+  // Mobile-compatible save method
+  const pdfBlob = doc.output('blob');
+  const blobUrl = URL.createObjectURL(pdfBlob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = `purchase-order-${data.order_number}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
 };
 
 export const printQuotation = (data: QuotationData) => {
@@ -729,7 +747,16 @@ export const generateInvoicePDF = (data: InvoiceData) => {
     addPDFFooter(doc);
   }
   
-  doc.save(`invoice-${data.invoice_number}.pdf`);
+  // Mobile-compatible save method
+  const pdfBlob = doc.output('blob');
+  const blobUrl = URL.createObjectURL(pdfBlob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = `invoice-${data.invoice_number}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
 };
 
 export const printInvoice = (data: InvoiceData) => {
