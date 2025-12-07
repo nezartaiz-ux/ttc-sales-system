@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, FileText, Download, Trash2, Eye } from "lucide-react";
+import { Plus, FileText, Download, Trash2, Eye, X } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +26,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type DatasheetCategory = 'generator' | 'equipment' | 'tractor';
 
@@ -43,6 +49,7 @@ const TechnicalDatasheets = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<DatasheetCategory>('generator');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [viewingPdf, setViewingPdf] = useState<{ url: string; name: string } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -99,7 +106,7 @@ const TechnicalDatasheets = () => {
     },
   });
 
-  const handleView = async (filePath: string) => {
+  const handleView = async (filePath: string, name: string) => {
     try {
       const { data, error } = await supabase.storage
         .from('datasheets')
@@ -115,16 +122,20 @@ const TechnicalDatasheets = () => {
       }
 
       const fileURL = URL.createObjectURL(data);
-      window.open(fileURL, '_blank');
-      
-      // Clean up the URL after a delay
-      setTimeout(() => URL.revokeObjectURL(fileURL), 100);
+      setViewingPdf({ url: fileURL, name });
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to open file",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleClosePdfViewer = () => {
+    if (viewingPdf) {
+      URL.revokeObjectURL(viewingPdf.url);
+      setViewingPdf(null);
     }
   };
 
@@ -227,7 +238,7 @@ const TechnicalDatasheets = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleView(datasheet.file_path)}
+                                onClick={() => handleView(datasheet.file_path, datasheet.name)}
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>
@@ -279,6 +290,45 @@ const TechnicalDatasheets = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* PDF Viewer Modal */}
+      <Dialog open={!!viewingPdf} onOpenChange={handleClosePdfViewer}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 flex flex-col">
+          <DialogHeader className="p-4 border-b flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle>{viewingPdf?.name}</DialogTitle>
+              <div className="flex gap-2">
+                {viewingPdf && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const a = document.createElement('a');
+                      a.href = viewingPdf.url;
+                      a.download = viewingPdf.name + '.pdf';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                    }}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                )}
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            {viewingPdf && (
+              <iframe
+                src={viewingPdf.url}
+                className="w-full h-full border-0"
+                title={viewingPdf.name}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
