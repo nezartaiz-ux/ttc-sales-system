@@ -1,13 +1,14 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Printer } from "lucide-react";
+import { Download, Printer, Truck } from "lucide-react";
 import { generateInvoicePDF, printInvoice } from "@/utils/pdfExport";
 
 interface ViewInvoiceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoice: any;
+  onCreateDeliveryNote?: (invoice: any) => void;
 }
 
 const displayName = (fullName?: string) => {
@@ -21,7 +22,7 @@ const displayName = (fullName?: string) => {
   return fullName;
 };
 
-export const ViewInvoiceModal = ({ open, onOpenChange, invoice }: ViewInvoiceModalProps) => {
+export const ViewInvoiceModal = ({ open, onOpenChange, invoice, onCreateDeliveryNote }: ViewInvoiceModalProps) => {
   if (!invoice) return null;
 
   const handleDownloadPDF = () => {
@@ -68,6 +69,13 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice }: ViewInvoiceMod
       discount_value: invoice.discount_value,
       customs_duty_status: invoice.customs_duty_status
     });
+  };
+
+  const handleCreateDeliveryNote = () => {
+    if (onCreateDeliveryNote) {
+      onCreateDeliveryNote(invoice);
+      onOpenChange(false);
+    }
   };
 
   return (
@@ -142,7 +150,7 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice }: ViewInvoiceMod
             </div>
           )}
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button onClick={handleDownloadPDF} variant="outline">
               <Download className="h-4 w-4 mr-2" />
               Download PDF
@@ -151,6 +159,12 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice }: ViewInvoiceMod
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
+            {onCreateDeliveryNote && (
+              <Button onClick={handleCreateDeliveryNote} variant="default">
+                <Truck className="h-4 w-4 mr-2" />
+                إنشاء وثيقة تسليم
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

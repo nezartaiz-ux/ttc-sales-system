@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Receipt, DollarSign, CreditCard, Eye, Trash2, FileDown, Printer } from "lucide-react";
+import { Plus, Receipt, DollarSign, CreditCard, Eye, Trash2, FileDown, Printer, Truck } from "lucide-react";
 import { generateInvoicePDF, printInvoice } from "@/utils/pdfExport";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CreateInvoiceModal } from "@/components/modals/CreateInvoiceModal";
 import { ViewInvoiceModal } from "@/components/modals/ViewInvoiceModal";
+import { CreateDeliveryNoteModal } from "@/components/modals/CreateDeliveryNoteModal";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +23,8 @@ const SalesInvoices = () => {
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState<any>(null);
+  const [isDeliveryNoteModalOpen, setIsDeliveryNoteModalOpen] = useState(false);
+  const [invoiceForDeliveryNote, setInvoiceForDeliveryNote] = useState<any>(null);
   const { isAdmin } = useUserRole();
   const { canCreate, canDelete } = useUserPermissions();
   const { toast } = useToast();
@@ -162,6 +165,11 @@ const SalesInvoices = () => {
       discount_value: invoice.discount_value ? parseFloat(invoice.discount_value) : undefined,
       customs_duty_status: invoice.customs_duty_status,
     });
+  };
+
+  const handleCreateDeliveryNote = (invoice: any) => {
+    setInvoiceForDeliveryNote(invoice);
+    setIsDeliveryNoteModalOpen(true);
   };
 
   return (
@@ -313,6 +321,14 @@ const SalesInvoices = () => {
                           </Button>
                           <Button 
                             variant="ghost" 
+                            size="icon"
+                            onClick={() => handleCreateDeliveryNote(invoice)}
+                            title="Create Delivery Note"
+                          >
+                            <Truck className="h-4 w-4 text-primary" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
                             size="icon" 
                             onClick={() => handleDeleteClick(invoice)}
                             disabled={!isAdmin && !canDelete('sales_invoices')}
@@ -343,6 +359,16 @@ const SalesInvoices = () => {
         open={isViewModalOpen}
         onOpenChange={setIsViewModalOpen}
         invoice={selectedInvoice}
+        onCreateDeliveryNote={handleCreateDeliveryNote}
+      />
+
+      <CreateDeliveryNoteModal
+        open={isDeliveryNoteModalOpen}
+        onOpenChange={(open) => {
+          setIsDeliveryNoteModalOpen(open);
+          if (!open) setInvoiceForDeliveryNote(null);
+        }}
+        importFromInvoice={invoiceForDeliveryNote}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
