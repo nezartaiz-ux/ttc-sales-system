@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ import { Plus, Trash2 } from "lucide-react";
 interface CreateDeliveryNoteModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  importFromInvoice?: any;
 }
 
 interface DeliveryItem {
@@ -35,7 +36,7 @@ interface DeliveryItem {
   remarks: string;
 }
 
-export const CreateDeliveryNoteModal = ({ open, onOpenChange }: CreateDeliveryNoteModalProps) => {
+export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice }: CreateDeliveryNoteModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -54,6 +55,34 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange }: CreateDeliveryNo
   const [items, setItems] = useState<DeliveryItem[]>([
     { inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "" }
   ]);
+
+  // Import from invoice when provided
+  useEffect(() => {
+    if (importFromInvoice && open) {
+      setFormData({
+        customer_id: importFromInvoice.customer_id || "",
+        customer_address: importFromInvoice.customers?.address || "",
+        model: "",
+        warranty_type: "new_sale",
+        mean_of_despatch: "",
+        mean_number: "",
+        driver_name: "",
+        notes: `مرجع الفاتورة: ${importFromInvoice.invoice_number}`,
+      });
+
+      // Import items from invoice
+      if (importFromInvoice.sales_invoice_items && importFromInvoice.sales_invoice_items.length > 0) {
+        const importedItems = importFromInvoice.sales_invoice_items.map((item: any) => ({
+          inventory_item_id: item.inventory_item_id || "",
+          model: "",
+          description: item.inventory_items?.name || "",
+          quantity: item.quantity || 1,
+          remarks: "",
+        }));
+        setItems(importedItems);
+      }
+    }
+  }, [importFromInvoice, open]);
 
   const { data: customers } = useQuery({
     queryKey: ['customers'],
