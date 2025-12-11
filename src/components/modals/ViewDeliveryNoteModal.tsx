@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FileDown, Printer } from "lucide-react";
+import { FileDown, Printer, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { generateDeliveryNotePDF, printDeliveryNote } from "@/utils/deliveryNotePdf";
 
@@ -22,9 +22,10 @@ interface ViewDeliveryNoteModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   deliveryNote: any;
+  onEdit?: () => void;
 }
 
-export const ViewDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: ViewDeliveryNoteModalProps) => {
+export const ViewDeliveryNoteModal = ({ open, onOpenChange, deliveryNote, onEdit }: ViewDeliveryNoteModalProps) => {
   const getWarrantyTypeLabel = (type: string) => {
     switch (type) {
       case 'under_warranty':
@@ -100,6 +101,12 @@ export const ViewDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: View
           <div className="flex items-center justify-between">
             <DialogTitle>وثيقة التسليم #{deliveryNote.delivery_note_number}</DialogTitle>
             <div className="flex gap-2">
+              {onEdit && (
+                <Button variant="outline" size="sm" onClick={onEdit}>
+                  <Pencil className="w-4 h-4 mr-2" />
+                  تعديل
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={handlePrint}>
                 <Printer className="w-4 h-4 mr-2" />
                 طباعة

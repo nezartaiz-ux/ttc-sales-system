@@ -12,13 +12,14 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Plus, Search, FileDown, Eye, Trash2, Truck } from "lucide-react";
+import { Plus, Search, FileDown, Eye, Trash2, Truck, Pencil } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { CreateDeliveryNoteModal } from "@/components/modals/CreateDeliveryNoteModal";
 import { ViewDeliveryNoteModal } from "@/components/modals/ViewDeliveryNoteModal";
+import { EditDeliveryNoteModal } from "@/components/modals/EditDeliveryNoteModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +36,7 @@ const DeliveryNotes = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<any>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -101,6 +103,25 @@ const DeliveryNotes = () => {
 
     setSelectedNote({ ...note, items });
     setIsViewModalOpen(true);
+  };
+
+  const handleEdit = async (note: any) => {
+    const { data: items, error } = await supabase
+      .from('delivery_note_items')
+      .select('*')
+      .eq('delivery_note_id', note.id);
+    
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load delivery note items",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedNote({ ...note, items });
+    setIsEditModalOpen(true);
   };
 
   const filteredNotes = deliveryNotes?.filter(note =>
@@ -224,6 +245,13 @@ const DeliveryNotes = () => {
                             <Button
                               variant="outline"
                               size="sm"
+                              onClick={() => handleEdit(note)}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() => setDeleteId(note.id)}
                             >
                               <Trash2 className="w-4 h-4" />
@@ -249,6 +277,18 @@ const DeliveryNotes = () => {
         <ViewDeliveryNoteModal
           open={isViewModalOpen}
           onOpenChange={setIsViewModalOpen}
+          deliveryNote={selectedNote}
+          onEdit={() => {
+            setIsViewModalOpen(false);
+            setIsEditModalOpen(true);
+          }}
+        />
+      )}
+
+      {selectedNote && (
+        <EditDeliveryNoteModal
+          open={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
           deliveryNote={selectedNote}
         />
       )}
