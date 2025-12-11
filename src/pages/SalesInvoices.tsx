@@ -38,12 +38,13 @@ const SalesInvoices = () => {
         .from('sales_invoices')
         .select(`
           *,
-          customers(name),
+          customers(name, address),
           profiles(full_name),
           sales_invoice_items(
             *,
             inventory_items(name)
-          )
+          ),
+          delivery_notes(id, delivery_note_number, status)
         `)
         .order('created_at', { ascending: false });
 
@@ -271,13 +272,17 @@ const SalesInvoices = () => {
                     <TableHead>Type</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Delivery</TableHead>
                     <TableHead>Created By</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoices.map((invoice) => (
+                  {invoices.map((invoice) => {
+                    const deliveryNote = invoice.delivery_notes?.[0];
+                    const deliveryStatus = deliveryNote?.status;
+                    return (
                     <TableRow key={invoice.id}>
                       <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                       <TableCell>{invoice.customers?.name || 'N/A'}</TableCell>
@@ -287,6 +292,18 @@ const SalesInvoices = () => {
                         <Badge variant={getStatusColor(invoice.status)}>
                           {invoice.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {deliveryNote ? (
+                          <Badge 
+                            variant={deliveryStatus === 'delivered' ? 'default' : deliveryStatus === 'cancelled' ? 'destructive' : 'outline'}
+                            className={deliveryStatus === 'delivered' ? 'bg-green-500' : ''}
+                          >
+                            {deliveryStatus === 'pending' ? 'قيد الانتظار' : deliveryStatus === 'delivered' ? 'تم التسليم' : 'ملغاة'}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
                       </TableCell>
                       <TableCell>{displayName(invoice.profiles?.full_name)}</TableCell>
                       <TableCell>{new Date(invoice.created_at).toLocaleDateString()}</TableCell>
@@ -339,7 +356,8 @@ const SalesInvoices = () => {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}

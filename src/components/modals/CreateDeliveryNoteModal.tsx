@@ -130,6 +130,7 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
           driver_name: formData.driver_name,
           notes: formData.notes,
           created_by: user?.id,
+          sales_invoice_id: importFromInvoice?.id || null,
         })
         .select()
         .single();

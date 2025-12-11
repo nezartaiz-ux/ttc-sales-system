@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, BarChart3, TrendingUp, PieChart, FileText } from "lucide-react";
+import { Download, BarChart3, TrendingUp, PieChart, FileText, Truck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { exportToCSV } from "@/utils/csvExport";
 import { generateReportPDF, generateDetailedQuotationReport } from "@/utils/reportPdfExport";
 import { useAuth } from "@/contexts/AuthContext";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 const Reports = () => {
   const [isExporting, setIsExporting] = useState(false);
@@ -21,6 +23,17 @@ const Reports = () => {
   const [totalInvoices, setTotalInvoices] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalQuotations, setTotalQuotations] = useState(0);
+  const [totalDeliveryNotes, setTotalDeliveryNotes] = useState(0);
+  
+  // Delivery notes report filters
+  const [dnStartDate, setDnStartDate] = useState<string>('');
+  const [dnEndDate, setDnEndDate] = useState<string>('');
+  const [dnCustomerId, setDnCustomerId] = useState<string>('');
+  const [dnStatus, setDnStatus] = useState<string>('');
+  const [deliveryNotes, setDeliveryNotes] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [loadingDeliveryNotes, setLoadingDeliveryNotes] = useState(false);
+  
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -43,9 +56,11 @@ const Reports = () => {
   useEffect(() => {
     const fetchSummaryData = async () => {
       try {
-        const [invoicesRes, quotationsRes] = await Promise.all([
+        const [invoicesRes, quotationsRes, deliveryNotesRes, customersRes] = await Promise.all([
           supabase.from('sales_invoices').select('grand_total, status'),
-          supabase.from('quotations').select('id')
+          supabase.from('quotations').select('id'),
+          supabase.from('delivery_notes').select('id'),
+          supabase.from('customers').select('id, name').eq('is_active', true).order('name')
         ]);
         
         if (invoicesRes.data) {
@@ -59,12 +74,74 @@ const Reports = () => {
         if (quotationsRes.data) {
           setTotalQuotations(quotationsRes.data.length);
         }
+        
+        if (deliveryNotesRes.data) {
+          setTotalDeliveryNotes(deliveryNotesRes.data.length);
+        }
+        
+        if (customersRes.data) {
+          setCustomers(customersRes.data);
+        }
       } catch (error) {
         console.error('Error fetching summary data:', error);
       }
     };
     fetchSummaryData();
   }, []);
+
+  // Fetch delivery notes with filters
+  const fetchDeliveryNotes = async () => {
+    setLoadingDeliveryNotes(true);
+    try {
+      let query = supabase
+        .from('delivery_notes')
+        .select(`
+          *,
+          customer:customers(name),
+          sales_invoice:sales_invoices(invoice_number)
+        `)
+        .order('delivery_note_date', { ascending: false });
+      
+      if (dnStartDate) {
+        query = query.gte('delivery_note_date', dnStartDate);
+      }
+      if (dnEndDate) {
+        query = query.lte('delivery_note_date', dnEndDate);
+      }
+      if (dnCustomerId && dnCustomerId !== 'all') {
+        query = query.eq('customer_id', dnCustomerId);
+      }
+      if (dnStatus && dnStatus !== 'all') {
+        query = query.eq('status', dnStatus);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      setDeliveryNotes(data || []);
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setLoadingDeliveryNotes(false);
+    }
+  };
+
+  const handleExportDeliveryNotesCSV = () => {
+    if (deliveryNotes.length === 0) {
+      toast({ title: 'Info', description: 'No data to export' });
+      return;
+    }
+    const exportData = deliveryNotes.map(dn => ({
+      delivery_note_number: dn.delivery_note_number,
+      date: dn.delivery_note_date,
+      customer: dn.customer?.name,
+      status: dn.status,
+      invoice_ref: dn.sales_invoice?.invoice_number || '-',
+      warranty_type: dn.warranty_type,
+      driver_name: dn.driver_name,
+    }));
+    exportToCSV(exportData, `delivery-notes-${new Date().toISOString().split('T')[0]}.csv`);
+    toast({ title: 'Success', description: 'Report exported' });
+  };
 
   const handleExportAll = async () => {
     setIsExporting(true);
@@ -277,7 +354,7 @@ const Reports = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="border-primary/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -310,6 +387,17 @@ const Reports = () => {
             <CardContent>
               <div className="text-2xl font-bold">{totalQuotations}</div>
               <p className="text-xs text-muted-foreground">Total quotations</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-green-500/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Delivery Notes</CardTitle>
+              <Truck className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalDeliveryNotes}</div>
+              <p className="text-xs text-muted-foreground">Total delivery notes</p>
             </CardContent>
           </Card>
         </div>
@@ -385,6 +473,111 @@ const Reports = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Delivery Notes Report Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5" />
+              تقرير وثائق التسليم
+            </CardTitle>
+            <CardDescription>البحث وتصفية وثائق التسليم حسب التاريخ والعميل والحالة</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <Label>من تاريخ</Label>
+                  <Input 
+                    type="date" 
+                    value={dnStartDate}
+                    onChange={(e) => setDnStartDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>إلى تاريخ</Label>
+                  <Input 
+                    type="date" 
+                    value={dnEndDate}
+                    onChange={(e) => setDnEndDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>العميل</Label>
+                  <Select value={dnCustomerId} onValueChange={setDnCustomerId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="جميع العملاء" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">جميع العملاء</SelectItem>
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>الحالة</Label>
+                  <Select value={dnStatus} onValueChange={setDnStatus}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="جميع الحالات" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">جميع الحالات</SelectItem>
+                      <SelectItem value="pending">قيد الانتظار</SelectItem>
+                      <SelectItem value="delivered">تم التسليم</SelectItem>
+                      <SelectItem value="cancelled">ملغاة</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={fetchDeliveryNotes} disabled={loadingDeliveryNotes}>
+                  {loadingDeliveryNotes ? 'جاري البحث...' : 'بحث'}
+                </Button>
+                <Button variant="outline" onClick={handleExportDeliveryNotesCSV} disabled={deliveryNotes.length === 0}>
+                  <Download className="h-4 w-4 mr-2" />
+                  تصدير CSV
+                </Button>
+              </div>
+
+              {deliveryNotes.length > 0 && (
+                <div className="border rounded-lg overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>رقم الوثيقة</TableHead>
+                        <TableHead>التاريخ</TableHead>
+                        <TableHead>العميل</TableHead>
+                        <TableHead>الحالة</TableHead>
+                        <TableHead>مرجع الفاتورة</TableHead>
+                        <TableHead>السائق</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {deliveryNotes.map((dn) => (
+                        <TableRow key={dn.id}>
+                          <TableCell className="font-medium">{dn.delivery_note_number}</TableCell>
+                          <TableCell>{dn.delivery_note_date}</TableCell>
+                          <TableCell>{dn.customer?.name}</TableCell>
+                          <TableCell>
+                            <Badge variant={dn.status === 'delivered' ? 'default' : dn.status === 'cancelled' ? 'destructive' : 'outline'}>
+                              {dn.status === 'pending' ? 'قيد الانتظار' : dn.status === 'delivered' ? 'تم التسليم' : 'ملغاة'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{dn.sales_invoice?.invoice_number || '-'}</TableCell>
+                          <TableCell>{dn.driver_name || '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

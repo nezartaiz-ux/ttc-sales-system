@@ -115,6 +115,7 @@ export type Database = {
           mean_of_despatch: string | null
           model: string | null
           notes: string | null
+          sales_invoice_id: string | null
           status: string
           updated_at: string
           warranty_type: string | null
@@ -132,6 +133,7 @@ export type Database = {
           mean_of_despatch?: string | null
           model?: string | null
           notes?: string | null
+          sales_invoice_id?: string | null
           status?: string
           updated_at?: string
           warranty_type?: string | null
@@ -149,6 +151,7 @@ export type Database = {
           mean_of_despatch?: string | null
           model?: string | null
           notes?: string | null
+          sales_invoice_id?: string | null
           status?: string
           updated_at?: string
           warranty_type?: string | null
@@ -166,6 +169,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_notes_sales_invoice_id_fkey"
+            columns: ["sales_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "sales_invoices"
             referencedColumns: ["id"]
           },
         ]
