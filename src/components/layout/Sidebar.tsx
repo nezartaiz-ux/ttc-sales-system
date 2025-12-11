@@ -13,6 +13,7 @@ import {
   Settings,
   FolderOpen,
   BookOpen,
+  ClipboardList,
   X
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ const navigation = [
   { name: "Quotations", href: "/quotations", icon: FileText },
   { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
   { name: "Sales Invoices", href: "/sales-invoices", icon: Receipt },
+  { name: "Delivery Notes", href: "/delivery-notes", icon: ClipboardList },
   { name: "Technical Datasheets", href: "/technical-datasheets", icon: BookOpen },
   { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "Settings", href: "/settings", icon: Settings },

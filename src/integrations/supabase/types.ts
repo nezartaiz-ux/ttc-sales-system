@@ -53,6 +53,123 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_note_items: {
+        Row: {
+          created_at: string
+          delivery_note_id: string
+          description: string
+          id: string
+          inventory_item_id: string | null
+          model: string | null
+          quantity: number
+          remarks: string | null
+        }
+        Insert: {
+          created_at?: string
+          delivery_note_id: string
+          description: string
+          id?: string
+          inventory_item_id?: string | null
+          model?: string | null
+          quantity?: number
+          remarks?: string | null
+        }
+        Update: {
+          created_at?: string
+          delivery_note_id?: string
+          description?: string
+          id?: string
+          inventory_item_id?: string | null
+          model?: string | null
+          quantity?: number
+          remarks?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_note_items_delivery_note_id_fkey"
+            columns: ["delivery_note_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_notes: {
+        Row: {
+          created_at: string
+          created_by: string
+          customer_address: string | null
+          customer_id: string
+          delivery_note_date: string
+          delivery_note_number: string
+          driver_name: string | null
+          id: string
+          mean_number: string | null
+          mean_of_despatch: string | null
+          model: string | null
+          notes: string | null
+          status: string
+          updated_at: string
+          warranty_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          customer_address?: string | null
+          customer_id: string
+          delivery_note_date?: string
+          delivery_note_number: string
+          driver_name?: string | null
+          id?: string
+          mean_number?: string | null
+          mean_of_despatch?: string | null
+          model?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          warranty_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          customer_address?: string | null
+          customer_id?: string
+          delivery_note_date?: string
+          delivery_note_number?: string
+          driver_name?: string | null
+          id?: string
+          mean_number?: string | null
+          mean_of_despatch?: string | null
+          model?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          warranty_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "delivery_notes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           batch_number: string | null
@@ -734,6 +851,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_delivery_note_number: { Args: never; Returns: string }
       generate_invoice_number: { Args: never; Returns: string }
       generate_po_number: { Args: never; Returns: string }
       generate_quotation_number: { Args: never; Returns: string }
