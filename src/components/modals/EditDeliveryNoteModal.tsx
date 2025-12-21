@@ -34,6 +34,7 @@ interface DeliveryItem {
   description: string;
   quantity: number;
   remarks: string;
+  item_category: string;
 }
 
 export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: EditDeliveryNoteModalProps) => {
@@ -44,7 +45,7 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
     customer_id: "",
     customer_address: "",
     model: "",
-    warranty_type: "under_warranty",
+    warranty_type: "new",
     mean_of_despatch: "",
     mean_number: "",
     driver_name: "",
@@ -53,7 +54,7 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
   });
 
   const [items, setItems] = useState<DeliveryItem[]>([
-    { inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "" }
+    { inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "", item_category: "generator" }
   ]);
 
   // Load delivery note data
@@ -63,7 +64,7 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
         customer_id: deliveryNote.customer_id || "",
         customer_address: deliveryNote.customer_address || "",
         model: deliveryNote.model || "",
-        warranty_type: deliveryNote.warranty_type || "under_warranty",
+        warranty_type: deliveryNote.warranty_type || "new",
         mean_of_despatch: deliveryNote.mean_of_despatch || "",
         mean_number: deliveryNote.mean_number || "",
         driver_name: deliveryNote.driver_name || "",
@@ -72,16 +73,26 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
       });
 
       if (deliveryNote.items && deliveryNote.items.length > 0) {
-        setItems(deliveryNote.items.map((item: any) => ({
-          id: item.id,
-          inventory_item_id: item.inventory_item_id || "",
-          model: item.model || "",
-          description: item.description || "",
-          quantity: item.quantity || 1,
-          remarks: item.remarks || "",
-        })));
+        setItems(deliveryNote.items.map((item: any) => {
+          // Extract category from remarks if it exists
+          let category = "generator";
+          const remarksMatch = item.remarks?.match(/^\[(Generator|Equipment|Tractor)\]/i);
+          if (remarksMatch) {
+            category = remarksMatch[1].toLowerCase();
+          }
+          
+          return {
+            id: item.id,
+            inventory_item_id: item.inventory_item_id || "",
+            model: item.model || "",
+            description: item.description || "",
+            quantity: item.quantity || 1,
+            remarks: item.remarks?.replace(/^\[(Generator|Equipment|Tractor)\]\s*/i, '') || "",
+            item_category: category,
+          };
+        }));
       } else {
-        setItems([{ inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "" }]);
+        setItems([{ inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "", item_category: "generator" }]);
       }
     }
   }, [deliveryNote, open]);
@@ -98,6 +109,28 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
       return data;
     }
   });
+
+  const { data: inventoryItems } = useQuery({
+    queryKey: ['inventory-items'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('inventory_items')
+        .select('id, name, description')
+        .eq('is_active', true)
+        .order('name');
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  const getCategoryLabel = (category: string) => {
+    switch (category) {
+      case 'generator': return 'Generator';
+      case 'equipment': return 'Equipment';
+      case 'tractor': return 'Tractor';
+      default: return category;
+    }
+  };
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -136,7 +169,7 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
           model: item.model,
           description: item.description,
           quantity: item.quantity,
-          remarks: item.remarks,
+          remarks: `[${getCategoryLabel(item.item_category)}] ${item.remarks}`.trim(),
         }));
 
       if (itemsToInsert.length > 0) {
@@ -175,7 +208,7 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
   };
 
   const addItem = () => {
-    setItems([...items, { inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "" }]);
+    setItems([...items, { inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "", item_category: "generator" }]);
   };
 
   const removeItem = (index: number) => {
@@ -187,6 +220,15 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
   const updateItem = (index: number, field: keyof DeliveryItem, value: any) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
+    
+    // If inventory item is selected, fill in description
+    if (field === 'inventory_item_id' && value) {
+      const item = inventoryItems?.find(i => i.id === value);
+      if (item) {
+        newItems[index].description = item.description || item.name;
+      }
+    }
+    
     setItems(newItems);
   };
 
@@ -328,6 +370,41 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
               {items.map((item, index) => (
                 <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-4">
                   <div className="col-span-12 md:col-span-2 space-y-1">
+                    <Label className="text-xs">Category</Label>
+                    <Select
+                      value={item.item_category}
+                      onValueChange={(value) => updateItem(index, 'item_category', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="generator">Generator</SelectItem>
+                        <SelectItem value="equipment">Equipment</SelectItem>
+                        <SelectItem value="tractor">Tractor</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-12 md:col-span-2 space-y-1">
+                    <Label className="text-xs">From Inventory</Label>
+                    <Select
+                      value={item.inventory_item_id}
+                      onValueChange={(value) => updateItem(index, 'inventory_item_id', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select item" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">-- Manual Entry --</SelectItem>
+                        {inventoryItems?.map((invItem) => (
+                          <SelectItem key={invItem.id} value={invItem.id}>
+                            {invItem.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-12 md:col-span-2 space-y-1">
                     <Label className="text-xs">Model</Label>
                     <Input
                       value={item.model}
@@ -335,7 +412,7 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
                       placeholder="Model"
                     />
                   </div>
-                  <div className="col-span-12 md:col-span-4 space-y-1">
+                  <div className="col-span-12 md:col-span-2 space-y-1">
                     <Label className="text-xs">Description *</Label>
                     <Input
                       value={item.description}
@@ -343,8 +420,8 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
                       placeholder="Material description"
                     />
                   </div>
-                  <div className="col-span-4 md:col-span-2 space-y-1">
-                    <Label className="text-xs">Quantity</Label>
+                  <div className="col-span-4 md:col-span-1 space-y-1">
+                    <Label className="text-xs">Qty</Label>
                     <Input
                       type="number"
                       min="1"
@@ -352,7 +429,7 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
                       onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
                     />
                   </div>
-                  <div className="col-span-6 md:col-span-3 space-y-1">
+                  <div className="col-span-6 md:col-span-2 space-y-1">
                     <Label className="text-xs">Remarks</Label>
                     <Input
                       value={item.remarks}

@@ -20,7 +20,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, FileDown } from "lucide-react";
 
 interface CreateDeliveryNoteModalProps {
   open: boolean;
@@ -34,6 +34,7 @@ interface DeliveryItem {
   description: string;
   quantity: number;
   remarks: string;
+  item_category: string;
 }
 
 export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice }: CreateDeliveryNoteModalProps) => {
@@ -53,8 +54,10 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
   });
 
   const [items, setItems] = useState<DeliveryItem[]>([
-    { inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "" }
+    { inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "", item_category: "generator" }
   ]);
+
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
 
   // Import from invoice when provided
   useEffect(() => {
@@ -78,6 +81,7 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
           description: item.inventory_items?.name || "",
           quantity: item.quantity || 1,
           remarks: "",
+          item_category: "generator",
         }));
         setItems(importedItems);
       }
@@ -110,6 +114,29 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
     }
   });
 
+  const { data: invoices } = useQuery({
+    queryKey: ['invoices-for-delivery'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sales_invoices')
+        .select(`
+          id,
+          invoice_number,
+          customer_id,
+          customers:customer_id(name, address),
+          sales_invoice_items(
+            id,
+            inventory_item_id,
+            quantity,
+            inventory_items:inventory_item_id(name)
+          )
+        `)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    }
+  });
+
   const createMutation = useMutation({
     mutationFn: async () => {
       // Generate delivery note number
@@ -130,7 +157,7 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
           driver_name: formData.driver_name,
           notes: formData.notes,
           created_by: user?.id,
-          sales_invoice_id: importFromInvoice?.id || null,
+          sales_invoice_id: importFromInvoice?.id || (selectedInvoiceId || null),
         })
         .select()
         .single();
@@ -146,7 +173,7 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
           model: item.model,
           description: item.description,
           quantity: item.quantity,
-          remarks: item.remarks,
+          remarks: `[${getCategoryLabel(item.item_category)}] ${item.remarks}`.trim(),
         }));
 
       if (itemsToInsert.length > 0) {
@@ -176,6 +203,15 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
     },
   });
 
+  const getCategoryLabel = (category: string) => {
+    switch (category) {
+      case 'generator': return 'Generator';
+      case 'equipment': return 'Equipment';
+      case 'tractor': return 'Tractor';
+      default: return category;
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       customer_id: "",
@@ -187,7 +223,8 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
       driver_name: "",
       notes: "",
     });
-    setItems([{ inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "" }]);
+    setItems([{ inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "", item_category: "generator" }]);
+    setSelectedInvoiceId("");
   };
 
   const handleCustomerChange = (customerId: string) => {
@@ -199,8 +236,41 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
     });
   };
 
+  const handleInvoiceImport = (invoiceId: string) => {
+    if (!invoiceId) return;
+    
+    const invoice = invoices?.find(inv => inv.id === invoiceId);
+    if (!invoice) return;
+
+    setSelectedInvoiceId(invoiceId);
+    setFormData({
+      ...formData,
+      customer_id: invoice.customer_id || "",
+      customer_address: (invoice.customers as any)?.address || "",
+      notes: `Invoice Reference: ${invoice.invoice_number}`,
+    });
+
+    // Import items from invoice
+    if (invoice.sales_invoice_items && invoice.sales_invoice_items.length > 0) {
+      const importedItems = invoice.sales_invoice_items.map((item: any) => ({
+        inventory_item_id: item.inventory_item_id || "",
+        model: "",
+        description: item.inventory_items?.name || "",
+        quantity: item.quantity || 1,
+        remarks: "",
+        item_category: "generator",
+      }));
+      setItems(importedItems);
+    }
+
+    toast({
+      title: "Imported",
+      description: `Data imported from invoice ${invoice.invoice_number}`,
+    });
+  };
+
   const addItem = () => {
-    setItems([...items, { inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "" }]);
+    setItems([...items, { inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "", item_category: "generator" }]);
   };
 
   const removeItem = (index: number) => {
@@ -244,6 +314,32 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
           <DialogTitle>Create New Delivery Note</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Import from Invoice */}
+          <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+            <h3 className="font-semibold flex items-center gap-2">
+              <FileDown className="w-4 h-4" />
+              Import from Invoice (Optional)
+            </h3>
+            <div className="space-y-2">
+              <Label>Select Invoice</Label>
+              <Select
+                value={selectedInvoiceId}
+                onValueChange={handleInvoiceImport}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an invoice to import data" />
+                </SelectTrigger>
+                <SelectContent>
+                  {invoices?.map((invoice) => (
+                    <SelectItem key={invoice.id} value={invoice.id}>
+                      {invoice.invoice_number} - {(invoice.customers as any)?.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Customer *</Label>
@@ -345,6 +441,41 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
               {items.map((item, index) => (
                 <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-4">
                   <div className="col-span-12 md:col-span-2 space-y-1">
+                    <Label className="text-xs">Category</Label>
+                    <Select
+                      value={item.item_category}
+                      onValueChange={(value) => updateItem(index, 'item_category', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="generator">Generator</SelectItem>
+                        <SelectItem value="equipment">Equipment</SelectItem>
+                        <SelectItem value="tractor">Tractor</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-12 md:col-span-2 space-y-1">
+                    <Label className="text-xs">From Inventory</Label>
+                    <Select
+                      value={item.inventory_item_id}
+                      onValueChange={(value) => updateItem(index, 'inventory_item_id', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select item" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">-- Manual Entry --</SelectItem>
+                        {inventoryItems?.map((invItem) => (
+                          <SelectItem key={invItem.id} value={invItem.id}>
+                            {invItem.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-12 md:col-span-2 space-y-1">
                     <Label className="text-xs">Model</Label>
                     <Input
                       value={item.model}
@@ -352,7 +483,7 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
                       placeholder="Model"
                     />
                   </div>
-                  <div className="col-span-12 md:col-span-4 space-y-1">
+                  <div className="col-span-12 md:col-span-2 space-y-1">
                     <Label className="text-xs">Description *</Label>
                     <Input
                       value={item.description}
@@ -360,8 +491,8 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
                       placeholder="Material description"
                     />
                   </div>
-                  <div className="col-span-4 md:col-span-2 space-y-1">
-                    <Label className="text-xs">Quantity</Label>
+                  <div className="col-span-4 md:col-span-1 space-y-1">
+                    <Label className="text-xs">Qty</Label>
                     <Input
                       type="number"
                       min="1"
@@ -369,7 +500,7 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
                       onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
                     />
                   </div>
-                  <div className="col-span-6 md:col-span-3 space-y-1">
+                  <div className="col-span-6 md:col-span-2 space-y-1">
                     <Label className="text-xs">Remarks</Label>
                     <Input
                       value={item.remarks}
