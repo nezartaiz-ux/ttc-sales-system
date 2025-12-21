@@ -66,6 +66,19 @@ const addPDFFooter = (doc: jsPDF) => {
   doc.text(footerText, centerX, pageHeight - 10);
 };
 
+// Helper function to get material condition label
+const getMaterialConditionLabel = (value: string): string => {
+  const labels: Record<string, string> = {
+    'new': 'New',
+    'used': 'Used',
+    'under_warranty': 'Under Warranty',
+    // Legacy values mapping
+    'new_sale': 'New',
+    'out_of_warranty': 'Used',
+  };
+  return labels[value] || value;
+};
+
 export const generateDeliveryNotePDF = (data: DeliveryNoteData) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
@@ -75,10 +88,8 @@ export const generateDeliveryNotePDF = (data: DeliveryNoteData) => {
   // Add header
   addPDFHeader(doc);
 
-  // Title based on warranty type
-  const title = data.warranty_type === 'تحت الضمان' 
-    ? 'UNDER WARRANTY DELIVERY NOTE'
-    : 'MATERIALS DELIVERY NOTE';
+  // Title
+  const title = 'MATERIALS DELIVERY NOTE';
   
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
@@ -99,7 +110,7 @@ export const generateDeliveryNotePDF = (data: DeliveryNoteData) => {
   yPos += 7;
   doc.text(`Model: ${data.model || '-'}`, 14, yPos);
   yPos += 7;
-  doc.text(`Warranty Type: ${data.warranty_type}`, 14, yPos);
+  doc.text(`Material Condition: ${getMaterialConditionLabel(data.warranty_type)}`, 14, yPos);
   yPos += 10;
 
   // Materials table
@@ -213,9 +224,8 @@ export const printDeliveryNote = (data: DeliveryNoteData) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
 
-  const title = data.warranty_type === 'تحت الضمان'
-    ? 'UNDER WARRANTY DELIVERY NOTE'
-    : 'MATERIALS DELIVERY NOTE';
+  const title = 'MATERIALS DELIVERY NOTE';
+  const materialConditionLabel = getMaterialConditionLabel(data.warranty_type);
 
   const html = `
     <!DOCTYPE html>
@@ -265,7 +275,7 @@ export const printDeliveryNote = (data: DeliveryNoteData) => {
           <p><strong>Customer:</strong> ${data.customer_name}</p>
           <p><strong>Address:</strong> ${data.customer_address || '-'}</p>
           <p><strong>Model:</strong> ${data.model || '-'}</p>
-          <p><strong>Warranty Type:</strong> ${data.warranty_type}</p>
+          <p><strong>Material Condition:</strong> ${materialConditionLabel}</p>
         </div>
         
         <table>

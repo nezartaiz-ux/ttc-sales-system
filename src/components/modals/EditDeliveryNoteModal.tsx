@@ -151,14 +151,14 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['delivery-notes'] });
       toast({
-        title: "تم التحديث",
-        description: "تم تحديث وثيقة التسليم بنجاح",
+        title: "Updated",
+        description: "Delivery note updated successfully",
       });
       onOpenChange(false);
     },
     onError: (error: any) => {
       toast({
-        title: "خطأ",
+        title: "Error",
         description: error.message,
         variant: "destructive",
       });
@@ -194,8 +194,8 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
     e.preventDefault();
     if (!formData.customer_id) {
       toast({
-        title: "خطأ",
-        description: "يرجى اختيار العميل",
+        title: "Error",
+        description: "Please select a customer",
         variant: "destructive",
       });
       return;
@@ -207,18 +207,18 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>تعديل وثيقة التسليم #{deliveryNote?.delivery_note_number}</DialogTitle>
+          <DialogTitle>Edit Delivery Note #{deliveryNote?.delivery_note_number}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>العميل *</Label>
+              <Label>Customer *</Label>
               <Select
                 value={formData.customer_id}
                 onValueChange={handleCustomerChange}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="اختر العميل" />
+                  <SelectValue placeholder="Select customer" />
                 </SelectTrigger>
                 <SelectContent>
                   {customers?.map((customer) => (
@@ -231,25 +231,25 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
             </div>
 
             <div className="space-y-2">
-              <Label>عنوان العميل</Label>
+              <Label>Customer Address</Label>
               <Input
                 value={formData.customer_address}
                 onChange={(e) => setFormData({ ...formData, customer_address: e.target.value })}
-                placeholder="عنوان التسليم"
+                placeholder="Delivery address"
               />
             </div>
 
             <div className="space-y-2">
-              <Label>الموديل</Label>
+              <Label>Model</Label>
               <Input
                 value={formData.model}
                 onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                placeholder="موديل المنتج"
+                placeholder="Product model"
               />
             </div>
 
             <div className="space-y-2">
-              <Label>نوع الضمان</Label>
+              <Label>Material Condition</Label>
               <Select
                 value={formData.warranty_type}
                 onValueChange={(value) => setFormData({ ...formData, warranty_type: value })}
@@ -258,15 +258,15 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="under_warranty">تحت الضمان</SelectItem>
-                  <SelectItem value="out_of_warranty">خارج الضمان</SelectItem>
-                  <SelectItem value="new_sale">بيع جديد</SelectItem>
+                  <SelectItem value="new">New</SelectItem>
+                  <SelectItem value="used">Used</SelectItem>
+                  <SelectItem value="under_warranty">Under Warranty</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>الحالة</Label>
+              <Label>Status</Label>
               <Select
                 value={formData.status}
                 onValueChange={(value) => setFormData({ ...formData, status: value })}
@@ -275,9 +275,9 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">قيد الانتظار</SelectItem>
-                  <SelectItem value="delivered">تم التسليم</SelectItem>
-                  <SelectItem value="cancelled">ملغاة</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="delivered">Delivered</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -285,30 +285,30 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
 
           {/* Dispatching Details */}
           <div className="border rounded-lg p-4 space-y-4">
-            <h3 className="font-semibold">تفاصيل الإرسال</h3>
+            <h3 className="font-semibold">Dispatching Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>وسيلة الإرسال</Label>
+                <Label>Mean of Despatch</Label>
                 <Input
                   value={formData.mean_of_despatch}
                   onChange={(e) => setFormData({ ...formData, mean_of_despatch: e.target.value })}
-                  placeholder="سيارة، شاحنة، إلخ"
+                  placeholder="Car, Truck, etc."
                 />
               </div>
               <div className="space-y-2">
-                <Label>رقم الوسيلة</Label>
+                <Label>Vehicle Number</Label>
                 <Input
                   value={formData.mean_number}
                   onChange={(e) => setFormData({ ...formData, mean_number: e.target.value })}
-                  placeholder="رقم اللوحة"
+                  placeholder="Plate number"
                 />
               </div>
               <div className="space-y-2">
-                <Label>اسم السائق</Label>
+                <Label>Driver Name</Label>
                 <Input
                   value={formData.driver_name}
                   onChange={(e) => setFormData({ ...formData, driver_name: e.target.value })}
-                  placeholder="اسم السائق"
+                  placeholder="Driver name"
                 />
               </div>
             </div>
@@ -317,10 +317,10 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
           {/* Materials List */}
           <div className="border rounded-lg p-4 space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="font-semibold">قائمة المواد</h3>
+              <h3 className="font-semibold">Materials List</h3>
               <Button type="button" variant="outline" size="sm" onClick={addItem}>
                 <Plus className="w-4 h-4 mr-1" />
-                إضافة عنصر
+                Add Item
               </Button>
             </div>
             
@@ -328,23 +328,23 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
               {items.map((item, index) => (
                 <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-4">
                   <div className="col-span-12 md:col-span-2 space-y-1">
-                    <Label className="text-xs">الموديل</Label>
+                    <Label className="text-xs">Model</Label>
                     <Input
                       value={item.model}
                       onChange={(e) => updateItem(index, 'model', e.target.value)}
-                      placeholder="الموديل"
+                      placeholder="Model"
                     />
                   </div>
                   <div className="col-span-12 md:col-span-4 space-y-1">
-                    <Label className="text-xs">الوصف *</Label>
+                    <Label className="text-xs">Description *</Label>
                     <Input
                       value={item.description}
                       onChange={(e) => updateItem(index, 'description', e.target.value)}
-                      placeholder="وصف المادة"
+                      placeholder="Material description"
                     />
                   </div>
                   <div className="col-span-4 md:col-span-2 space-y-1">
-                    <Label className="text-xs">الكمية</Label>
+                    <Label className="text-xs">Quantity</Label>
                     <Input
                       type="number"
                       min="1"
@@ -353,11 +353,11 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
                     />
                   </div>
                   <div className="col-span-6 md:col-span-3 space-y-1">
-                    <Label className="text-xs">ملاحظات</Label>
+                    <Label className="text-xs">Remarks</Label>
                     <Input
                       value={item.remarks}
                       onChange={(e) => updateItem(index, 'remarks', e.target.value)}
-                      placeholder="ملاحظات"
+                      placeholder="Remarks"
                     />
                   </div>
                   <div className="col-span-2 md:col-span-1">
@@ -377,21 +377,21 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
           </div>
 
           <div className="space-y-2">
-            <Label>ملاحظات</Label>
+            <Label>Notes</Label>
             <Textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="ملاحظات إضافية"
+              placeholder="Additional notes"
               rows={3}
             />
           </div>
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              إلغاء
+              Cancel
             </Button>
             <Button type="submit" disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? "جاري الحفظ..." : "حفظ التغييرات"}
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </form>
