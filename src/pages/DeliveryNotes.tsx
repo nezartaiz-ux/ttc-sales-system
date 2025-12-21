@@ -69,14 +69,14 @@ const DeliveryNotes = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['delivery-notes'] });
       toast({
-        title: "تم الحذف",
-        description: "تم حذف وثيقة التسليم بنجاح",
+        title: "Deleted",
+        description: "Delivery note deleted successfully",
       });
       setDeleteId(null);
     },
     onError: (error: any) => {
       toast({
-        title: "خطأ",
+        title: "Error",
         description: error.message,
         variant: "destructive",
       });
@@ -132,11 +132,11 @@ const DeliveryNotes = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="outline">قيد الانتظار</Badge>;
+        return <Badge variant="outline">Pending</Badge>;
       case 'delivered':
-        return <Badge className="bg-green-500">تم التسليم</Badge>;
+        return <Badge className="bg-green-500">Delivered</Badge>;
       case 'cancelled':
-        return <Badge variant="destructive">ملغاة</Badge>;
+        return <Badge variant="destructive">Cancelled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -147,19 +147,19 @@ const DeliveryNotes = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">وثائق التسليم</h1>
-            <p className="text-muted-foreground mt-1">إدارة وثائق تسليم البضائع</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Delivery Notes</h1>
+            <p className="text-muted-foreground mt-1">Manage delivery notes</p>
           </div>
           <Button onClick={() => setIsCreateModalOpen(true)} className="w-full sm:w-auto">
             <Plus className="w-4 h-4 mr-2" />
-            إنشاء وثيقة تسليم
+            Create Delivery Note
           </Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">إجمالي الوثائق</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Documents</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{deliveryNotes?.length || 0}</div>
@@ -167,7 +167,7 @@ const DeliveryNotes = () => {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">قيد الانتظار</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-600">
@@ -177,7 +177,7 @@ const DeliveryNotes = () => {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">تم التسليم</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Delivered</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
@@ -192,12 +192,12 @@ const DeliveryNotes = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <CardTitle className="flex items-center gap-2">
                 <Truck className="w-5 h-5" />
-                قائمة وثائق التسليم
+                Delivery Notes List
               </CardTitle>
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
-                  placeholder="بحث..."
+                  placeholder="Search..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
@@ -207,21 +207,21 @@ const DeliveryNotes = () => {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">جاري التحميل...</div>
+              <div className="text-center py-8 text-muted-foreground">Loading...</div>
             ) : filteredNotes?.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                لا توجد وثائق تسليم
+                No delivery notes found
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>رقم الوثيقة</TableHead>
-                      <TableHead>التاريخ</TableHead>
-                      <TableHead>العميل</TableHead>
-                      <TableHead>الحالة</TableHead>
-                      <TableHead>إجراءات</TableHead>
+                      <TableHead>Document No.</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -296,18 +296,18 @@ const DeliveryNotes = () => {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
             <AlertDialogDescription>
-              هل أنت متأكد من حذف هذه الوثيقة؟ لا يمكن التراجع عن هذا الإجراء.
+              Are you sure you want to delete this delivery note? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteId && deleteMutation.mutate(deleteId)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              حذف
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
