@@ -26,22 +26,22 @@ const COMPANY_INFO = {
 // Helper function to add header with logo and company info
 const addPDFHeader = (doc: jsPDF, isCat: boolean = true) => {
   // Company info on top-left
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text(COMPANY_INFO.name, 14, 15);
-  doc.setFontSize(9);
+  doc.text(COMPANY_INFO.name, 14, 12);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.text(COMPANY_INFO.address, 14, 21);
+  doc.text(COMPANY_INFO.address, 14, 17);
   
   // Logo on top-right
   const logo = isCat ? tehamaLogo : mfLogo;
   try {
-    doc.addImage(logo, 'PNG', 160, 10, 35, 20);
+    doc.addImage(logo, 'PNG', 160, 8, 35, 18);
   } catch (e) {
     console.error('Error adding logo to PDF:', e);
   }
   
-  return 30; // Return Y position where content should start
+  return 25; // Return Y position where content should start
 };
 
 // Helper function to convert number to words
@@ -91,14 +91,14 @@ const amountToWords = (amount: number): string => {
 // Helper function to add footer with company info
 const addPDFFooter = (doc: jsPDF) => {
   const pageHeight = doc.internal.pageSize.height;
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   
   // Center footer
   const footerText = `${COMPANY_INFO.footer.postBox} | ${COMPANY_INFO.footer.location} | ${COMPANY_INFO.footer.phone} | ${COMPANY_INFO.footer.fax}`;
   const textWidth = doc.getTextWidth(footerText);
   const centerX = (doc.internal.pageSize.width - textWidth) / 2;
-  doc.text(footerText, centerX, pageHeight - 10);
+  doc.text(footerText, centerX, pageHeight - 8);
 };
 
 // Helper function to add signature section at the bottom of last page
@@ -107,25 +107,25 @@ const addSignatureSection = (doc: jsPDF, createdByName?: string) => {
   const pageHeight = doc.internal.pageSize.height;
   
   // Position signature section above footer
-  const signatureY = pageHeight - 45;
+  const signatureY = pageHeight - 35;
   
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   
   // Prepared by section on the right
-  const rightX = pageWidth - 70;
+  const rightX = pageWidth - 65;
   doc.text('Prepared by:', rightX, signatureY);
   
   if (createdByName) {
     doc.setFont('helvetica', 'bold');
-    doc.text(createdByName, rightX, signatureY + 6);
+    doc.text(createdByName, rightX, signatureY + 5);
     doc.setFont('helvetica', 'normal');
   }
   
   // Signature line
-  doc.line(rightX, signatureY + 20, rightX + 50, signatureY + 20);
-  doc.setFontSize(8);
-  doc.text('Signature', rightX + 15, signatureY + 25);
+  doc.line(rightX, signatureY + 15, rightX + 45, signatureY + 15);
+  doc.setFontSize(7);
+  doc.text('Signature', rightX + 12, signatureY + 19);
 };
 
 interface QuotationData {
@@ -193,36 +193,59 @@ export const generateQuotationPDF = (data: QuotationData) => {
   const doc = new jsPDF();
   const pageHeight = doc.internal.pageSize.height;
   const pageWidth = doc.internal.pageSize.width;
-  const marginBottom = 55; // Space for signature and footer
+  const marginBottom = 42; // Space for signature and footer
   
   // Add header with logo and company info
   addPDFHeader(doc, true);
   
   // Document title
-  doc.setFontSize(20);
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('QUOTATION', 105, 45, { align: 'center' });
+  doc.text('QUOTATION', 105, 32, { align: 'center' });
   
-  // Quotation details (without created by - moved to footer)
-  doc.setFontSize(10);
+  // Quotation details - compact two-column layout
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  let yPos = 58;
-  doc.text(`Quotation #: ${data.quotation_number}`, 14, yPos);
-  yPos += 7;
-  doc.text(`Customer: ${data.customer_name}`, 14, yPos);
-  yPos += 7;
-  doc.text(`Valid Until: ${data.validity_period}`, 14, yPos);
+  let yPos = 40;
+  const col1X = 14;
+  const col2X = pageWidth / 2 + 5;
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Quotation #:', col1X, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.quotation_number, col1X + 25, yPos);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Valid Until:', col2X, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.validity_period, col2X + 22, yPos);
+  
+  yPos += 5;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Customer:', col1X, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.customer_name, col1X + 22, yPos);
+  
   if (data.customs_duty_status) {
-    yPos += 7;
-    doc.text(`Customs & Duty Status: ${data.customs_duty_status}`, 14, yPos);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Customs:', col2X, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.customs_duty_status, col2X + 18, yPos);
   }
+  
   if (data.delivery_terms) {
-    yPos += 7;
-    doc.text(`Delivery Terms: ${data.delivery_terms}`, 14, yPos);
+    yPos += 5;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Delivery Terms:', col1X, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.delivery_terms, col1X + 30, yPos);
   }
   if (data.delivery_details) {
-    yPos += 7;
-    doc.text(`Delivery Details: ${data.delivery_details}`, 14, yPos);
+    yPos += 5;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Delivery Details:', col1X, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.delivery_details, col1X + 32, yPos);
   }
   
   // Items table - Calculate amounts
@@ -252,8 +275,8 @@ export const generateQuotationPDF = (data: QuotationData) => {
   );
   
   autoTable(doc, {
-    startY: yPos + 8,
-    head: [['Item', 'Quantity', 'Unit Price', 'Total']],
+    startY: yPos + 5,
+    head: [['Item', 'Qty', 'Unit Price', 'Total']],
     body: data.items.map(item => [
       item.name,
       item.quantity.toLocaleString(),
@@ -262,35 +285,37 @@ export const generateQuotationPDF = (data: QuotationData) => {
     ]),
     foot: footRows,
     showFoot: 'lastPage',
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [60, 60, 60], textColor: [255, 255, 255], fontStyle: 'bold' },
     margin: { bottom: marginBottom }
   });
   
   // Add amount in words
-  let currentY = (doc as any).lastAutoTable.finalY + 10;
-  if (currentY > pageHeight - marginBottom - 20) {
+  let currentY = (doc as any).lastAutoTable.finalY + 6;
+  if (currentY > pageHeight - marginBottom - 15) {
     doc.addPage();
     addPDFHeader(doc, true);
-    currentY = 40;
+    currentY = 35;
   }
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.text('Amount in Words:', 14, currentY);
   doc.setFont('helvetica', 'normal');
-  doc.text(amountToWords(data.grand_total), 14, currentY + 6);
+  doc.text(amountToWords(data.grand_total), 14, currentY + 4);
   
   // Notes with proper multi-line handling
   if (data.notes) {
-    let notesY = currentY + 20;
-    doc.setFontSize(10);
+    let notesY = currentY + 12;
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('Terms & Conditions:', 14, notesY);
     
-    notesY += 6;
+    notesY += 4;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     
     // Split text into lines that fit the page width
-    const maxWidth = pageWidth - 28; // 14mm margin on each side
+    const maxWidth = pageWidth - 28;
     const lines = doc.splitTextToSize(data.notes, maxWidth);
     
     // Add lines with page break handling
@@ -298,10 +323,10 @@ export const generateQuotationPDF = (data: QuotationData) => {
       if (notesY > pageHeight - marginBottom) {
         doc.addPage();
         addPDFHeader(doc, true);
-        notesY = 40; // Start below header on new page
+        notesY = 35;
       }
       doc.text(line, 14, notesY);
-      notesY += 5;
+      notesY += 4;
     });
   }
   
@@ -332,34 +357,50 @@ export const generatePOPDF = (data: POData) => {
   const doc = new jsPDF();
   const pageHeight = doc.internal.pageSize.height;
   const pageWidth = doc.internal.pageSize.width;
-  const marginBottom = 55; // Space for signature and footer
+  const marginBottom = 42;
   
-  // Add header with logo and company info
+  // Add header
   addPDFHeader(doc, true);
   
   // Document title
-  doc.setFontSize(20);
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('PURCHASE ORDER', 105, 45, { align: 'center' });
+  doc.text('PURCHASE ORDER', 105, 32, { align: 'center' });
   
-  // PO details (without created by - moved to footer)
-  doc.setFontSize(10);
+  // PO details - compact two-column layout
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  let yPos = 58;
-  doc.text(`PO #: ${data.order_number}`, 14, yPos);
-  yPos += 7;
-  doc.text(`Supplier: ${data.supplier_name}`, 14, yPos);
-  yPos += 7;
-  doc.text(`Expected Delivery: ${data.expected_delivery_date}`, 14, yPos);
+  let yPos = 40;
+  const col1X = 14;
+  const col2X = pageWidth / 2 + 5;
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('PO #:', col1X, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.order_number, col1X + 15, yPos);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Expected Delivery:', col2X, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.expected_delivery_date, col2X + 35, yPos);
+  
+  yPos += 5;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Supplier:', col1X, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.supplier_name, col1X + 18, yPos);
+  
   if (data.customs_duty_status) {
-    yPos += 7;
-    doc.text(`Customs & Duty Status: ${data.customs_duty_status}`, 14, yPos);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Customs:', col2X, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.customs_duty_status, col2X + 18, yPos);
   }
   
-  // Items table with formatted currency
+  // Items table
   autoTable(doc, {
-    startY: yPos + 8,
-    head: [['Item', 'Quantity', 'Unit Price', 'Total']],
+    startY: yPos + 5,
+    head: [['Item', 'Qty', 'Unit Price', 'Total']],
     body: data.items.map(item => [
       item.name,
       item.quantity.toLocaleString(),
@@ -372,33 +413,33 @@ export const generatePOPDF = (data: POData) => {
       ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
     ],
     showFoot: 'lastPage',
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [60, 60, 60], textColor: [255, 255, 255], fontStyle: 'bold' },
     margin: { bottom: marginBottom }
   });
   
-  // Notes with proper multi-line handling
+  // Notes
   if (data.notes) {
-    let currentY = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFontSize(10);
+    let currentY = (doc as any).lastAutoTable.finalY + 6;
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('Notes:', 14, currentY);
     
-    currentY += 6;
+    currentY += 4;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     
-    // Split text into lines that fit the page width
-    const maxWidth = pageWidth - 28; // 14mm margin on each side
+    const maxWidth = pageWidth - 28;
     const lines = doc.splitTextToSize(data.notes, maxWidth);
     
-    // Add lines with page break handling
     lines.forEach((line: string) => {
       if (currentY > pageHeight - marginBottom) {
         doc.addPage();
         addPDFHeader(doc, true);
-        currentY = 40; // Start below header on new page
+        currentY = 35;
       }
       doc.text(line, 14, currentY);
-      currentY += 5;
+      currentY += 4;
     });
   }
   
@@ -630,30 +671,50 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   const doc = new jsPDF();
   const pageHeight = doc.internal.pageSize.height;
   const pageWidth = doc.internal.pageSize.width;
-  const marginBottom = 55; // Space for signature and footer
+  const marginBottom = 42;
   
-  // Add header with logo and company info
+  // Add header
   addPDFHeader(doc, true);
   
   // Document title
-  doc.setFontSize(20);
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('SALES INVOICE', 105, 45, { align: 'center' });
+  doc.text('SALES INVOICE', 105, 32, { align: 'center' });
   
-  // Invoice details (without created by - moved to footer)
-  doc.setFontSize(10);
+  // Invoice details - compact two-column layout
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  let yPos = 58;
-  doc.text(`Invoice #: ${data.invoice_number}`, 14, yPos);
-  yPos += 7;
-  doc.text(`Customer: ${data.customer_name}`, 14, yPos);
-  yPos += 7;
-  doc.text(`Type: ${data.invoice_type.toUpperCase()}`, 14, yPos);
-  yPos += 7;
-  doc.text(`Due Date: ${data.due_date}`, 14, yPos);
+  let yPos = 40;
+  const col1X = 14;
+  const col2X = pageWidth / 2 + 5;
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Invoice #:', col1X, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.invoice_number, col1X + 20, yPos);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Due Date:', col2X, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.due_date, col2X + 20, yPos);
+  
+  yPos += 5;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Customer:', col1X, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.customer_name, col1X + 22, yPos);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Type:', col2X, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.invoice_type.toUpperCase(), col2X + 12, yPos);
+  
   if (data.customs_duty_status) {
-    yPos += 7;
-    doc.text(`Customs & Duty Status: ${data.customs_duty_status}`, 14, yPos);
+    yPos += 5;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Customs:', col1X, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.customs_duty_status, col1X + 18, yPos);
   }
   
   // Items table - Calculate amounts
@@ -665,14 +726,12 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   const invoiceNetAmount = data.total_amount - invoiceDiscountAmount;
   
   const invoiceFootRows: any[] = [];
-  
-  // Always show Value first
   invoiceFootRows.push(['', '', 'Value:', formatCurrency(data.total_amount)]);
   
   if (data.discount_value && data.discount_value > 0) {
     const discountLabel = data.discount_type === 'percentage' 
-      ? `Given Discount (${data.discount_value}%):`
-      : 'Given Discount:';
+      ? `Discount (${data.discount_value}%):`
+      : 'Discount:';
     invoiceFootRows.push(['', '', discountLabel, `-${formatCurrency(invoiceDiscountAmount)}`]);
     invoiceFootRows.push(['', '', 'Net Amount:', formatCurrency(invoiceNetAmount)]);
   }
@@ -683,8 +742,8 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   );
   
   autoTable(doc, {
-    startY: yPos + 8,
-    head: [['Item', 'Quantity', 'Unit Price', 'Total']],
+    startY: yPos + 5,
+    head: [['Item', 'Qty', 'Unit Price', 'Total']],
     body: data.items.map(item => [
       item.name,
       item.quantity.toLocaleString(),
@@ -693,32 +752,34 @@ export const generateInvoicePDF = (data: InvoiceData) => {
     ]),
     foot: invoiceFootRows,
     showFoot: 'lastPage',
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [60, 60, 60], textColor: [255, 255, 255], fontStyle: 'bold' },
     margin: { bottom: marginBottom }
   });
   
   // Add amount in words
-  let invoiceCurrentY = (doc as any).lastAutoTable.finalY + 10;
-  if (invoiceCurrentY > pageHeight - marginBottom - 20) {
+  let invoiceCurrentY = (doc as any).lastAutoTable.finalY + 6;
+  if (invoiceCurrentY > pageHeight - marginBottom - 15) {
     doc.addPage();
     addPDFHeader(doc, true);
-    invoiceCurrentY = 40;
+    invoiceCurrentY = 35;
   }
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.text('Amount in Words:', 14, invoiceCurrentY);
   doc.setFont('helvetica', 'normal');
-  doc.text(amountToWords(data.grand_total), 14, invoiceCurrentY + 6);
+  doc.text(amountToWords(data.grand_total), 14, invoiceCurrentY + 4);
   
-  // Notes with proper multi-line handling
+  // Notes
   if (data.notes) {
-    let currentY = invoiceCurrentY + 20;
-    doc.setFontSize(10);
+    let currentY = invoiceCurrentY + 12;
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('Notes:', 14, currentY);
     
-    currentY += 6;
+    currentY += 4;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     
     // Split text into lines that fit the page width
     const maxWidth = pageWidth - 28; // 14mm margin on each side
