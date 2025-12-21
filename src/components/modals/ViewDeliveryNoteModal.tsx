@@ -26,14 +26,14 @@ interface ViewDeliveryNoteModalProps {
 }
 
 export const ViewDeliveryNoteModal = ({ open, onOpenChange, deliveryNote, onEdit }: ViewDeliveryNoteModalProps) => {
-  const getWarrantyTypeLabel = (type: string) => {
+  const getMaterialConditionLabel = (type: string) => {
     switch (type) {
+      case 'new':
+        return 'New';
+      case 'used':
+        return 'Used';
       case 'under_warranty':
-        return 'تحت الضمان';
-      case 'out_of_warranty':
-        return 'خارج الضمان';
-      case 'new_sale':
-        return 'بيع جديد';
+        return 'Under Warranty';
       default:
         return type;
     }
@@ -42,11 +42,11 @@ export const ViewDeliveryNoteModal = ({ open, onOpenChange, deliveryNote, onEdit
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="outline">قيد الانتظار</Badge>;
+        return <Badge variant="outline">Pending</Badge>;
       case 'delivered':
-        return <Badge className="bg-green-500">تم التسليم</Badge>;
+        return <Badge className="bg-green-500">Delivered</Badge>;
       case 'cancelled':
-        return <Badge variant="destructive">ملغاة</Badge>;
+        return <Badge variant="destructive">Cancelled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -59,7 +59,7 @@ export const ViewDeliveryNoteModal = ({ open, onOpenChange, deliveryNote, onEdit
       customer_name: deliveryNote.customer?.name || '',
       customer_address: deliveryNote.customer_address || '',
       model: deliveryNote.model || '',
-      warranty_type: getWarrantyTypeLabel(deliveryNote.warranty_type),
+      warranty_type: deliveryNote.warranty_type,
       mean_of_despatch: deliveryNote.mean_of_despatch || '',
       mean_number: deliveryNote.mean_number || '',
       driver_name: deliveryNote.driver_name || '',
@@ -80,7 +80,7 @@ export const ViewDeliveryNoteModal = ({ open, onOpenChange, deliveryNote, onEdit
       customer_name: deliveryNote.customer?.name || '',
       customer_address: deliveryNote.customer_address || '',
       model: deliveryNote.model || '',
-      warranty_type: getWarrantyTypeLabel(deliveryNote.warranty_type),
+      warranty_type: deliveryNote.warranty_type,
       mean_of_despatch: deliveryNote.mean_of_despatch || '',
       mean_number: deliveryNote.mean_number || '',
       driver_name: deliveryNote.driver_name || '',
@@ -99,17 +99,17 @@ export const ViewDeliveryNoteModal = ({ open, onOpenChange, deliveryNote, onEdit
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle>وثيقة التسليم #{deliveryNote.delivery_note_number}</DialogTitle>
+            <DialogTitle>Delivery Note #{deliveryNote.delivery_note_number}</DialogTitle>
             <div className="flex gap-2">
               {onEdit && (
                 <Button variant="outline" size="sm" onClick={onEdit}>
                   <Pencil className="w-4 h-4 mr-2" />
-                  تعديل
+                  Edit
                 </Button>
               )}
               <Button variant="outline" size="sm" onClick={handlePrint}>
                 <Printer className="w-4 h-4 mr-2" />
-                طباعة
+                Print
               </Button>
               <Button variant="outline" size="sm" onClick={handleExportPDF}>
                 <FileDown className="w-4 h-4 mr-2" />
@@ -122,47 +122,47 @@ export const ViewDeliveryNoteModal = ({ open, onOpenChange, deliveryNote, onEdit
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">التاريخ</p>
+              <p className="text-sm text-muted-foreground">Date</p>
               <p className="font-medium">
                 {deliveryNote.delivery_note_date && format(new Date(deliveryNote.delivery_note_date), 'dd/MM/yyyy')}
               </p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">الحالة</p>
+              <p className="text-sm text-muted-foreground">Status</p>
               <p>{getStatusBadge(deliveryNote.status)}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">العميل</p>
+              <p className="text-sm text-muted-foreground">Customer</p>
               <p className="font-medium">{deliveryNote.customer?.name}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">عنوان التسليم</p>
+              <p className="text-sm text-muted-foreground">Delivery Address</p>
               <p className="font-medium">{deliveryNote.customer_address || '-'}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">الموديل</p>
+              <p className="text-sm text-muted-foreground">Model</p>
               <p className="font-medium">{deliveryNote.model || '-'}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">نوع الضمان</p>
-              <p className="font-medium">{getWarrantyTypeLabel(deliveryNote.warranty_type)}</p>
+              <p className="text-sm text-muted-foreground">Material Condition</p>
+              <p className="font-medium">{getMaterialConditionLabel(deliveryNote.warranty_type)}</p>
             </div>
           </div>
 
           {/* Dispatching Details */}
           <div className="border rounded-lg p-4">
-            <h3 className="font-semibold mb-3">تفاصيل الإرسال</h3>
+            <h3 className="font-semibold mb-3">Dispatching Details</h3>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <p className="text-sm text-muted-foreground">وسيلة الإرسال</p>
+                <p className="text-sm text-muted-foreground">Mean of Despatch</p>
                 <p className="font-medium">{deliveryNote.mean_of_despatch || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">رقم الوسيلة</p>
+                <p className="text-sm text-muted-foreground">Vehicle Number</p>
                 <p className="font-medium">{deliveryNote.mean_number || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">اسم السائق</p>
+                <p className="text-sm text-muted-foreground">Driver Name</p>
                 <p className="font-medium">{deliveryNote.driver_name || '-'}</p>
               </div>
             </div>
@@ -170,15 +170,15 @@ export const ViewDeliveryNoteModal = ({ open, onOpenChange, deliveryNote, onEdit
 
           {/* Materials List */}
           <div>
-            <h3 className="font-semibold mb-3">قائمة المواد</h3>
+            <h3 className="font-semibold mb-3">Materials List</h3>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">#</TableHead>
-                  <TableHead>الموديل</TableHead>
-                  <TableHead>الوصف</TableHead>
-                  <TableHead className="w-20">الكمية</TableHead>
-                  <TableHead>ملاحظات</TableHead>
+                  <TableHead>Model</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="w-20">Qty</TableHead>
+                  <TableHead>Remarks</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -197,13 +197,13 @@ export const ViewDeliveryNoteModal = ({ open, onOpenChange, deliveryNote, onEdit
 
           {deliveryNote.notes && (
             <div>
-              <h3 className="font-semibold mb-2">ملاحظات</h3>
+              <h3 className="font-semibold mb-2">Notes</h3>
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">{deliveryNote.notes}</p>
             </div>
           )}
 
           <div className="text-sm text-muted-foreground">
-            <p>تم الإنشاء بواسطة: {deliveryNote.created_by_profile?.full_name || '-'}</p>
+            <p>Created by: {deliveryNote.created_by_profile?.full_name || '-'}</p>
           </div>
         </div>
       </DialogContent>
