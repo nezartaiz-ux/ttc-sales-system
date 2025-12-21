@@ -459,14 +459,14 @@ export const CreateDeliveryNoteModal = ({ open, onOpenChange, importFromInvoice 
                   <div className="col-span-12 md:col-span-2 space-y-1">
                     <Label className="text-xs">From Inventory</Label>
                     <Select
-                      value={item.inventory_item_id}
-                      onValueChange={(value) => updateItem(index, 'inventory_item_id', value)}
+                      value={item.inventory_item_id || "manual"}
+                      onValueChange={(value) => updateItem(index, 'inventory_item_id', value === "manual" ? "" : value)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select item" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">-- Manual Entry --</SelectItem>
+                        <SelectItem value="manual">-- Manual Entry --</SelectItem>
                         {inventoryItems?.map((invItem) => (
                           <SelectItem key={invItem.id} value={invItem.id}>
                             {invItem.name}
