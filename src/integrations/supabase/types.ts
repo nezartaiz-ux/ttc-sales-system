@@ -956,6 +956,8 @@ export type Database = {
         | "sales_invoices"
         | "reports"
         | "settings"
+        | "delivery_notes"
+        | "image_gallery"
       user_role:
         | "admin"
         | "sales_staff"
@@ -1105,6 +1107,8 @@ export const Constants = {
         "sales_invoices",
         "reports",
         "settings",
+        "delivery_notes",
+        "image_gallery",
       ],
       user_role: [
         "admin",
