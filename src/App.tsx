@@ -14,6 +14,7 @@ import Quotations from "./pages/Quotations";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import SalesInvoices from "./pages/SalesInvoices";
 import TechnicalDatasheets from "./pages/TechnicalDatasheets";
+import ImageGallery from "./pages/ImageGallery";
 import DeliveryNotes from "./pages/DeliveryNotes";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
@@ -75,6 +76,7 @@ const AppRoutes = () => {
         <Route path="/sales-invoices" element={<ProtectedRoute><SalesInvoices /></ProtectedRoute>} />
         <Route path="/delivery-notes" element={<ProtectedRoute><DeliveryNotes /></ProtectedRoute>} />
         <Route path="/technical-datasheets" element={<ProtectedRoute><TechnicalDatasheets /></ProtectedRoute>} />
+        <Route path="/image-gallery" element={<ProtectedRoute><ImageGallery /></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -14,6 +14,7 @@ import {
   FolderOpen,
   BookOpen,
   ClipboardList,
+  Image,
   X
 } from "lucide-react";
 
@@ -28,6 +29,7 @@ const navigation = [
   { name: "Sales Invoices", href: "/sales-invoices", icon: Receipt },
   { name: "Delivery Notes", href: "/delivery-notes", icon: ClipboardList },
   { name: "Technical Datasheets", href: "/technical-datasheets", icon: BookOpen },
+  { name: "Image Gallery", href: "/image-gallery", icon: Image },
   { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "Settings", href: "/settings", icon: Settings },
 ];

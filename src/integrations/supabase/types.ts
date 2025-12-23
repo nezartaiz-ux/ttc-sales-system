@@ -180,6 +180,42 @@ export type Database = {
           },
         ]
       }
+      equipment_images: {
+        Row: {
+          category: string
+          created_at: string
+          file_path: string
+          file_size: number | null
+          id: string
+          model: string
+          name: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          model: string
+          name: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          model?: string
+          name?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
       inventory_items: {
         Row: {
           batch_number: string | null
