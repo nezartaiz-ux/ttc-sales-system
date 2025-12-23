@@ -38,6 +38,8 @@ const MODULES = [
   { id: 'quotations', label: 'Quotations' },
   { id: 'purchase_orders', label: 'Purchase Orders' },
   { id: 'sales_invoices', label: 'Sales Invoices' },
+  { id: 'delivery_notes', label: 'Delivery Notes' },
+  { id: 'image_gallery', label: 'Image Gallery' },
   { id: 'reports', label: 'Reports' },
   { id: 'settings', label: 'Settings' },
 ];

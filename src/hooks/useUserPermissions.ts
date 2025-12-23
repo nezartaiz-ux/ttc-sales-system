@@ -10,6 +10,8 @@ export type SystemModule =
   | 'quotations'
   | 'purchase_orders'
   | 'sales_invoices'
+  | 'delivery_notes'
+  | 'image_gallery'
   | 'reports'
   | 'settings';
 
