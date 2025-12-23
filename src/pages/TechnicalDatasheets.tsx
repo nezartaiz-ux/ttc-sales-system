@@ -108,12 +108,11 @@ const TechnicalDatasheets = () => {
 
   const handleView = async (filePath: string, name: string) => {
     try {
-      // Use createSignedUrl for private buckets or getPublicUrl for public buckets
       const { data, error } = await supabase.storage
         .from('datasheets')
-        .createSignedUrl(filePath, 3600); // 1 hour expiry
+        .download(filePath);
 
-      if (error || !data?.signedUrl) {
+      if (error || !data) {
         toast({
           title: "Error",
           description: "Failed to open file",
@@ -122,7 +121,10 @@ const TechnicalDatasheets = () => {
         return;
       }
 
-      setViewingPdf({ url: data.signedUrl, name });
+      // Create a blob with explicit PDF MIME type for proper iframe rendering
+      const pdfBlob = new Blob([data], { type: 'application/pdf' });
+      const fileURL = URL.createObjectURL(pdfBlob);
+      setViewingPdf({ url: fileURL, name });
     } catch (error) {
       toast({
         title: "Error",
@@ -133,7 +135,10 @@ const TechnicalDatasheets = () => {
   };
 
   const handleClosePdfViewer = () => {
-    setViewingPdf(null);
+    if (viewingPdf) {
+      URL.revokeObjectURL(viewingPdf.url);
+      setViewingPdf(null);
+    }
   };
 
   const handleDownload = async (filePath: string, name: string) => {
