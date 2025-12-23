@@ -479,15 +479,15 @@ const Reports = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Truck className="h-5 w-5" />
-              تقرير وثائق التسليم
+              Delivery Notes Report
             </CardTitle>
-            <CardDescription>البحث وتصفية وثائق التسليم حسب التاريخ والعميل والحالة</CardDescription>
+            <CardDescription>Search and filter delivery notes by date, customer, and status</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <Label>من تاريخ</Label>
+                  <Label>From Date</Label>
                   <Input 
                     type="date" 
                     value={dnStartDate}
@@ -495,7 +495,7 @@ const Reports = () => {
                   />
                 </div>
                 <div>
-                  <Label>إلى تاريخ</Label>
+                  <Label>To Date</Label>
                   <Input 
                     type="date" 
                     value={dnEndDate}
@@ -503,13 +503,13 @@ const Reports = () => {
                   />
                 </div>
                 <div>
-                  <Label>العميل</Label>
+                  <Label>Customer</Label>
                   <Select value={dnCustomerId} onValueChange={setDnCustomerId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="جميع العملاء" />
+                      <SelectValue placeholder="All Customers" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">جميع العملاء</SelectItem>
+                      <SelectItem value="all">All Customers</SelectItem>
                       {customers.map((customer) => (
                         <SelectItem key={customer.id} value={customer.id}>
                           {customer.name}
@@ -519,27 +519,27 @@ const Reports = () => {
                   </Select>
                 </div>
                 <div>
-                  <Label>الحالة</Label>
+                  <Label>Status</Label>
                   <Select value={dnStatus} onValueChange={setDnStatus}>
                     <SelectTrigger>
-                      <SelectValue placeholder="جميع الحالات" />
+                      <SelectValue placeholder="All Statuses" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">جميع الحالات</SelectItem>
-                      <SelectItem value="pending">قيد الانتظار</SelectItem>
-                      <SelectItem value="delivered">تم التسليم</SelectItem>
-                      <SelectItem value="cancelled">ملغاة</SelectItem>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="delivered">Delivered</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="flex gap-2">
                 <Button onClick={fetchDeliveryNotes} disabled={loadingDeliveryNotes}>
-                  {loadingDeliveryNotes ? 'جاري البحث...' : 'بحث'}
+                  {loadingDeliveryNotes ? 'Searching...' : 'Search'}
                 </Button>
                 <Button variant="outline" onClick={handleExportDeliveryNotesCSV} disabled={deliveryNotes.length === 0}>
                   <Download className="h-4 w-4 mr-2" />
-                  تصدير CSV
+                  Export CSV
                 </Button>
               </div>
 
@@ -548,12 +548,12 @@ const Reports = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>رقم الوثيقة</TableHead>
-                        <TableHead>التاريخ</TableHead>
-                        <TableHead>العميل</TableHead>
-                        <TableHead>الحالة</TableHead>
-                        <TableHead>مرجع الفاتورة</TableHead>
-                        <TableHead>السائق</TableHead>
+                        <TableHead>Document No.</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Invoice Ref.</TableHead>
+                        <TableHead>Driver</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -564,7 +564,7 @@ const Reports = () => {
                           <TableCell>{dn.customer?.name}</TableCell>
                           <TableCell>
                             <Badge variant={dn.status === 'delivered' ? 'default' : dn.status === 'cancelled' ? 'destructive' : 'outline'}>
-                              {dn.status === 'pending' ? 'قيد الانتظار' : dn.status === 'delivered' ? 'تم التسليم' : 'ملغاة'}
+                              {dn.status === 'pending' ? 'Pending' : dn.status === 'delivered' ? 'Delivered' : 'Cancelled'}
                             </Badge>
                           </TableCell>
                           <TableCell>{dn.sales_invoice?.invoice_number || '-'}</TableCell>
