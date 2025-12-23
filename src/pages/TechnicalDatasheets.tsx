@@ -108,11 +108,12 @@ const TechnicalDatasheets = () => {
 
   const handleView = async (filePath: string, name: string) => {
     try {
+      // Use createSignedUrl for private buckets or getPublicUrl for public buckets
       const { data, error } = await supabase.storage
         .from('datasheets')
-        .download(filePath);
+        .createSignedUrl(filePath, 3600); // 1 hour expiry
 
-      if (error || !data) {
+      if (error || !data?.signedUrl) {
         toast({
           title: "Error",
           description: "Failed to open file",
@@ -121,8 +122,7 @@ const TechnicalDatasheets = () => {
         return;
       }
 
-      const fileURL = URL.createObjectURL(data);
-      setViewingPdf({ url: fileURL, name });
+      setViewingPdf({ url: data.signedUrl, name });
     } catch (error) {
       toast({
         title: "Error",
@@ -133,10 +133,7 @@ const TechnicalDatasheets = () => {
   };
 
   const handleClosePdfViewer = () => {
-    if (viewingPdf) {
-      URL.revokeObjectURL(viewingPdf.url);
-      setViewingPdf(null);
-    }
+    setViewingPdf(null);
   };
 
   const handleDownload = async (filePath: string, name: string) => {
