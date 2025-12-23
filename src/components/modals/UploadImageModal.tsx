@@ -108,15 +108,15 @@ export const UploadImageModal = ({ open, onOpenChange }: UploadImageModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Upload Equipment Image</DialogTitle>
           <DialogDescription>
             Add a new image for a generator, equipment, or tractor model.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4 py-4">
+        <div className="flex-1 overflow-y-auto space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="model">Model *</Label>
             <Input
@@ -178,7 +178,7 @@ export const UploadImageModal = ({ open, onOpenChange }: UploadImageModalProps) 
           )}
         </div>
 
-        <div className="flex gap-2 justify-end">
+        <div className="flex gap-2 justify-end pt-4 border-t flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

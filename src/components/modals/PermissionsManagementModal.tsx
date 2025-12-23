@@ -201,19 +201,19 @@ export function PermissionsManagementModal({ open, onOpenChange }: PermissionsMa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh]">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>User Permissions Management</DialogTitle>
           <DialogDescription>
             Define granular access rights for each user to system modules
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-4 h-[600px]">
+        <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0 overflow-hidden">
           {/* Users List */}
-          <div className="w-1/3 border-r pr-4">
+          <div className="w-full md:w-1/3 md:border-r md:pr-4 flex-shrink-0">
             <h3 className="font-semibold mb-3">Select User</h3>
-            <ScrollArea className="h-[550px]">
+            <ScrollArea className="h-[150px] md:h-[calc(100%-2rem)]">
               {loading && !selectedUser ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin" />
@@ -241,10 +241,10 @@ export function PermissionsManagementModal({ open, onOpenChange }: PermissionsMa
           </div>
 
           {/* Permissions Grid */}
-          <div className="flex-1">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {selectedUser ? (
               <>
-                <div className="flex justify-between items-center mb-3">
+                <div className="flex justify-between items-center mb-3 flex-shrink-0">
                   <h3 className="font-semibold">
                     Permissions for {selectedUserData?.full_name}
                   </h3>
@@ -259,13 +259,13 @@ export function PermissionsManagementModal({ open, onOpenChange }: PermissionsMa
                   </Button>
                 </div>
 
-                <ScrollArea className="h-[500px]">
+                <ScrollArea className="flex-1 min-h-0">
                   {loading ? (
                     <div className="flex justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin" />
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-4 pr-4">
                       {MODULES.map((module) => (
                         <div key={module.id} className="border rounded-lg p-4">
                           <h4 className="font-medium mb-3">{module.label}</h4>
@@ -297,7 +297,7 @@ export function PermissionsManagementModal({ open, onOpenChange }: PermissionsMa
                   )}
                 </ScrollArea>
 
-                <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                <div className="flex justify-end gap-2 pt-4 border-t flex-shrink-0 mt-4">
                   <Button
                     variant="outline"
                     onClick={() => setSelectedUser(null)}
