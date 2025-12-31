@@ -1,8 +1,5 @@
-# Welcome to your Lovable project
 
-## Project info
-
-**URL**: https://lovable.dev/projects/1be8b4f8-6b15-4c28-9167-ab6322d5a022
+**URL**: https://ttc-sales-system.lovable.app
 
 ## How can I edit this code?
 
@@ -10,7 +7,6 @@ There are several ways of editing your application.
 
 **Use Lovable**
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/1be8b4f8-6b15-4c28-9167-ab6322d5a022) and start prompting.
 
 Changes made via Lovable will be committed automatically to this repo.
 
