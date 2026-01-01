@@ -288,8 +288,11 @@ const Reports = () => {
         // Default report generation for other types
         const tableName = customReportType === 'sales' ? 'sales_invoices' as const : 
                           customReportType === 'purchase-orders' ? 'purchase_orders' as const :
+                          customReportType === 'inventory' ? 'inventory_items' as const :
                           customReportType as any;
-        const { data } = await supabase.from(tableName).select('*');
+        const { data, error } = await supabase.from(tableName).select('*');
+        
+        if (error) throw error;
         
         if (data && data.length > 0) {
           const headers = Object.keys(data[0]);
@@ -310,6 +313,8 @@ const Reports = () => {
             created_by_name: userFullName || 'N/A'
           });
           toast({ title: 'Success', description: 'PDF report generated' });
+        } else {
+          toast({ title: 'Info', description: 'No data available for this report' });
         }
       }
     } catch (error) {
@@ -324,11 +329,15 @@ const Reports = () => {
     try {
       const tableName = customReportType === 'sales' ? 'sales_invoices' as const : 
                         customReportType === 'purchase-orders' ? 'purchase_orders' as const :
+                        customReportType === 'inventory' ? 'inventory_items' as const :
                         customReportType as any;
-      const { data } = await supabase.from(tableName).select('*');
-      if (data) {
+      const { data, error } = await supabase.from(tableName).select('*');
+      if (error) throw error;
+      if (data && data.length > 0) {
         exportToCSV(data, `${customReportType}-${new Date().toISOString().split('T')[0]}.csv`);
         toast({ title: 'Success', description: 'CSV exported' });
+      } else {
+        toast({ title: 'Info', description: 'No data available for this report' });
       }
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to export CSV', variant: 'destructive' });

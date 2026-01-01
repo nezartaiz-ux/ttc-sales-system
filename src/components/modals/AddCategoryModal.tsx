@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,21 +15,47 @@ const categorySchema = z.object({
   description: z.string().trim().max(500, 'Description must be less than 500 characters').optional().or(z.literal(''))
 });
 
+interface Category {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
 interface AddCategoryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  editCategory?: Category | null;
 }
 
-export const AddCategoryModal = ({ open, onOpenChange, onSuccess }: AddCategoryModalProps) => {
+export const AddCategoryModal = ({ open, onOpenChange, onSuccess, editCategory }: AddCategoryModalProps) => {
+  const isEditing = !!editCategory;
   const [formData, setFormData] = useState({
     name: '',
-    description: ''
+    description: '',
+    is_active: true,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (open) {
+      if (editCategory) {
+        setFormData({
+          name: editCategory.name || '',
+          description: editCategory.description || '',
+          is_active: editCategory.is_active,
+        });
+      } else {
+        setFormData({ name: '', description: '', is_active: true });
+      }
+      setErrors({});
+    }
+  }, [open, editCategory]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,30 +83,36 @@ export const AddCategoryModal = ({ open, onOpenChange, onSuccess }: AddCategoryM
     try {
       const categoryData = {
         name: formData.name.trim(),
-        description: formData.description.trim() || null
+        description: formData.description.trim() || null,
+        is_active: formData.is_active,
       };
 
-      const { error } = await supabase
-        .from('product_categories')
-        .insert([categoryData]);
+      let error;
+      if (isEditing && editCategory) {
+        ({ error } = await supabase
+          .from('product_categories')
+          .update(categoryData)
+          .eq('id', editCategory.id));
+      } else {
+        ({ error } = await supabase
+          .from('product_categories')
+          .insert([categoryData]));
+      }
 
       if (error) {
         toast({
           title: 'Error',
-          description: `Failed to add category: ${error.message}`,
+          description: `Failed to ${isEditing ? 'update' : 'add'} category: ${error.message}`,
           variant: 'destructive',
         });
       } else {
         toast({
           title: 'Success',
-          description: 'Category added successfully',
+          description: `Category ${isEditing ? 'updated' : 'added'} successfully`,
         });
         
         // Reset form
-        setFormData({
-          name: '',
-          description: ''
-        });
+        setFormData({ name: '', description: '', is_active: true });
         
         onOpenChange(false);
         onSuccess?.();
@@ -95,7 +128,7 @@ export const AddCategoryModal = ({ open, onOpenChange, onSuccess }: AddCategoryM
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
@@ -107,9 +140,9 @@ export const AddCategoryModal = ({ open, onOpenChange, onSuccess }: AddCategoryM
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Category</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Category' : 'Add New Category'}</DialogTitle>
           <DialogDescription>
-            Create a new product category to organize your inventory.
+            {isEditing ? 'Update category details.' : 'Create a new product category to organize your inventory.'}
           </DialogDescription>
         </DialogHeader>
         
@@ -139,6 +172,19 @@ export const AddCategoryModal = ({ open, onOpenChange, onSuccess }: AddCategoryM
             {errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
           </div>
 
+          {isEditing && (
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="is_active"
+                checked={formData.is_active}
+                onCheckedChange={(checked) => handleInputChange('is_active', checked)}
+              />
+              <Label htmlFor="is_active" className="cursor-pointer">
+                {formData.is_active ? 'Active' : 'Inactive'}
+              </Label>
+            </div>
+          )}
+
           <div className="flex gap-3 pt-4">
             <Button
               type="button"
@@ -153,7 +199,7 @@ export const AddCategoryModal = ({ open, onOpenChange, onSuccess }: AddCategoryM
               disabled={isLoading}
               className="flex-1"
             >
-              {isLoading ? 'Adding...' : 'Add Category'}
+              {isLoading ? (isEditing ? 'Updating...' : 'Adding...') : (isEditing ? 'Update Category' : 'Add Category')}
             </Button>
           </div>
         </form>
