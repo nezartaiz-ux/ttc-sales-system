@@ -305,14 +305,9 @@ export const generateQuotationPDF = (data: QuotationData) => {
   
   // Notes with proper multi-line handling
   if (data.notes) {
-    let notesY = currentY + 12;
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Terms & Conditions:', 14, notesY);
-    
-    notesY += 4;
-    doc.setFont('helvetica', 'normal');
+    let notesY = currentY + 10;
     doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
     
     // Split text into lines that fit the page width
     const maxWidth = pageWidth - 28;
@@ -554,7 +549,7 @@ export const printQuotation = (data: QuotationData) => {
         <div style="margin-top: 20px;">
           <p><strong>Amount in Words:</strong> ${amountToWords(data.grand_total)}</p>
         </div>
-        ${data.notes ? `<div class="notes"><strong>Terms & Conditions:</strong><br/>${data.notes.replace(/\n/g, '<br/>')}</div>` : ''}
+        ${data.notes ? `<div class="notes">${data.notes.replace(/\n/g, '<br/>')}</div>` : ''}
         
         <div class="signature-section">
           <p class="prepared-by">Prepared by:</p>
