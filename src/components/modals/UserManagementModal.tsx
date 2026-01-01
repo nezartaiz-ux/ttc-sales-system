@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Pencil, Trash2, Plus, User, Shield, UserPlus, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Pencil, Trash2, Plus, User, Shield, UserPlus, Loader2, Eye, EyeOff, Key } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -43,6 +43,10 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
   const [newUserRole, setNewUserRole] = useState('sales_staff');
   const [showPassword, setShowPassword] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
+  const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
   const { toast } = useToast();
   const { isAdmin } = useUserRole();
 
@@ -174,6 +178,63 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
         description: `Failed to update user status: ${error.message}`,
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleResetPassword = async (userId: string) => {
+    if (!newPassword || newPassword.length < 6) {
+      toast({
+        title: 'Error',
+        description: 'Password must be at least 6 characters',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setResettingPassword(true);
+    try {
+      // Note: Admin password reset requires Supabase admin functions
+      // For now, we'll use auth.updateUser if the admin is the current user
+      // or provide instructions for the user
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (currentUser && currentUser.id === userId) {
+        // Current user can update their own password
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+        
+        toast({
+          title: 'Success',
+          description: 'Password updated successfully',
+        });
+      } else {
+        // For other users, we need to send a password reset email
+        const userToReset = users.find(u => u.user_id === userId);
+        if (userToReset?.email) {
+          const { error } = await supabase.auth.resetPasswordForEmail(userToReset.email, {
+            redirectTo: `${window.location.origin}/`,
+          });
+          if (error) throw error;
+          
+          toast({
+            title: 'Password Reset Email Sent',
+            description: `A password reset link has been sent to ${userToReset.email}`,
+          });
+        } else {
+          throw new Error('User email not found');
+        }
+      }
+      
+      setResetPasswordUserId(null);
+      setNewPassword('');
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to reset password',
+        variant: 'destructive',
+      });
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -497,6 +558,44 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                                   Cancel
                                 </Button>
                               </div>
+                            ) : resetPasswordUserId === user.user_id ? (
+                              <div className="flex flex-col gap-2 min-w-[200px]">
+                                <div className="relative">
+                                  <Input
+                                    type={showNewPassword ? "text" : "password"}
+                                    placeholder="New password (min 6 chars)"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    className="pr-10"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="absolute right-0 top-0 h-full px-3"
+                                    onClick={() => setShowNewPassword(!showNewPassword)}
+                                  >
+                                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                  </Button>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button 
+                                    variant="default" 
+                                    size="sm"
+                                    onClick={() => handleResetPassword(user.user_id)}
+                                    disabled={resettingPassword}
+                                  >
+                                    {resettingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Reset'}
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => { setResetPasswordUserId(null); setNewPassword(''); }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
                             ) : (
                               <div className="flex items-center gap-1">
                                 <Button 
@@ -506,6 +605,14 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                                   title="Edit roles"
                                 >
                                   <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => setResetPasswordUserId(user.user_id)}
+                                  title="Reset password"
+                                >
+                                  <Key className="h-4 w-4" />
                                 </Button>
                                 <Button 
                                   variant="ghost" 

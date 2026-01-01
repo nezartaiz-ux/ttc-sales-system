@@ -3,15 +3,25 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, FolderOpen } from "lucide-react";
+import { Plus, FolderOpen, Pencil, Trash2 } from "lucide-react";
 import { AddCategoryModal } from "@/components/modals/AddCategoryModal";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+
+interface Category {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+}
 
 const Categories = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [categories, setCategories] = useState<{ id: string; name: string; description: string | null; is_active: boolean; created_at: string }[]>([]);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { isAdmin } = useUserRole();
@@ -28,6 +38,40 @@ const Categories = () => {
   };
 
   useEffect(() => { fetchCategories(); }, []);
+
+  const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+    try {
+      // Check if category has inventory items
+      const { data: items, error: checkError } = await supabase
+        .from('inventory_items')
+        .select('id')
+        .eq('category_id', categoryId)
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      if (items && items.length > 0) {
+        toast({
+          title: 'Cannot Delete',
+          description: `Category "${categoryName}" has inventory items. Please remove or reassign them first.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('product_categories')
+        .delete()
+        .eq('id', categoryId);
+
+      if (error) throw error;
+
+      toast({ title: 'Success', description: 'Category deleted successfully' });
+      fetchCategories();
+    } catch (error: any) {
+      toast({ title: 'Error', description: `Failed to delete category: ${error.message}`, variant: 'destructive' });
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -110,6 +154,7 @@ const Categories = () => {
                       <TableHead>Description</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Created</TableHead>
+                      {isAdmin && <TableHead>Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -117,8 +162,47 @@ const Categories = () => {
                       <TableRow key={c.id}>
                         <TableCell className="font-medium">{c.name}</TableCell>
                         <TableCell>{c.description || '-'}</TableCell>
-                        <TableCell>{c.is_active ? 'Active' : 'Inactive'}</TableCell>
+                        <TableCell>
+                          <span className={c.is_active ? "text-green-600" : "text-red-600"}>
+                            {c.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </TableCell>
                         <TableCell>{new Date(c.created_at).toLocaleString()}</TableCell>
+                        {isAdmin && (
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingCategory(c)}
+                                title="Edit"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" title="Delete">
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Category</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{c.name}"? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteCategory(c.id, c.name)}>
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
@@ -133,6 +217,13 @@ const Categories = () => {
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
         onSuccess={fetchCategories}
+      />
+
+      <AddCategoryModal
+        open={!!editingCategory}
+        onOpenChange={(open) => !open && setEditingCategory(null)}
+        onSuccess={fetchCategories}
+        editCategory={editingCategory}
       />
     </DashboardLayout>
   );

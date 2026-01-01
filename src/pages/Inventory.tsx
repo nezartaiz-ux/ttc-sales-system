@@ -3,13 +3,14 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Package, AlertTriangle, Pencil } from "lucide-react";
+import { Plus, Package, AlertTriangle, Pencil, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AddItemModal } from "@/components/modals/AddItemModal";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const Inventory = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -17,7 +18,7 @@ const Inventory = () => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInStockOnly, setShowInStockOnly] = useState(false);
-  const { isInventory } = useUserRole();
+  const { isInventory, isAdmin } = useUserRole();
   const { toast } = useToast();
 
   const fetchItems = async () => {
@@ -49,6 +50,22 @@ const Inventory = () => {
   useEffect(() => {
     fetchItems();
   }, []);
+
+  const handleDeleteItem = async (itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from('inventory_items')
+        .delete()
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      toast({ title: 'Success', description: 'Item deleted successfully' });
+      fetchItems();
+    } catch (error: any) {
+      toast({ title: 'Error', description: `Failed to delete item: ${error.message}`, variant: 'destructive' });
+    }
+  };
   
   return (
     <DashboardLayout>
@@ -201,20 +218,46 @@ const Inventory = () => {
                               </span>
                             </TableCell>
                             <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  if (!isInventory) {
-                                    toast({ title: 'Permission denied', description: 'Only inventory staff or admins can edit items.', variant: 'destructive' });
-                                    return;
-                                  }
-                                  setEditingItem(item);
-                                }}
-                                disabled={!isInventory}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (!isInventory) {
+                                      toast({ title: 'Permission denied', description: 'Only inventory staff or admins can edit items.', variant: 'destructive' });
+                                      return;
+                                    }
+                                    setEditingItem(item);
+                                  }}
+                                  disabled={!isInventory}
+                                  title="Edit"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                {isAdmin && (
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="sm" title="Delete">
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Item</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to delete "{item.name}"? This action cannot be undone.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteItem(item.id)}>
+                                          Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
