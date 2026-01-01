@@ -9,7 +9,7 @@ import { Download, BarChart3, TrendingUp, PieChart, FileText, Truck } from "luci
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { exportToCSV } from "@/utils/csvExport";
-import { generateReportPDF, generateDetailedQuotationReport } from "@/utils/reportPdfExport";
+import { generateReportPDF, generateDetailedQuotationReport, generateDetailedInventoryReport } from "@/utils/reportPdfExport";
 import { useAuth } from "@/contexts/AuthContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -284,11 +284,32 @@ const Reports = () => {
         } else {
           toast({ title: 'Info', description: 'No quotations found for the selected period' });
         }
+      } else if (customReportType === 'inventory') {
+        // Special handling for detailed inventory report
+        let query = supabase
+          .from('inventory_items')
+          .select('*, product_categories(name), suppliers(name)')
+          .order('name', { ascending: true });
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          generateDetailedInventoryReport({
+            title: 'INVENTORY Report',
+            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
+            items: data,
+            created_by_name: userFullName || 'N/A'
+          });
+          
+          toast({ title: 'Success', description: 'PDF report generated' });
+        } else {
+          toast({ title: 'Info', description: 'No inventory items found' });
+        }
       } else {
         // Default report generation for other types
         const tableName = customReportType === 'sales' ? 'sales_invoices' as const : 
                           customReportType === 'purchase-orders' ? 'purchase_orders' as const :
-                          customReportType === 'inventory' ? 'inventory_items' as const :
                           customReportType as any;
         const { data, error } = await supabase.from(tableName).select('*');
         
@@ -301,7 +322,6 @@ const Reports = () => {
           // Map report types to match serial number formats
           let reportType = customReportType;
           if (customReportType === 'sales') reportType = 'sales';
-          else if (customReportType === 'inventory') reportType = 'inventory';
           else if (customReportType === 'purchase-orders') reportType = 'purchase_orders';
           
           generateReportPDF({
