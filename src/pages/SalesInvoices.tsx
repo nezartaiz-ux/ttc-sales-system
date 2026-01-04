@@ -10,6 +10,7 @@ import { ViewInvoiceModal } from "@/components/modals/ViewInvoiceModal";
 import { CreateDeliveryNoteModal } from "@/components/modals/CreateDeliveryNoteModal";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { useUserCategories } from "@/hooks/useUserCategories";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -27,11 +28,14 @@ const SalesInvoices = () => {
   const [invoiceForDeliveryNote, setInvoiceForDeliveryNote] = useState<any>(null);
   const { isAdmin } = useUserRole();
   const { canCreate, canDelete } = useUserPermissions();
+  const { userCategories, hasRestrictions, loading: categoriesLoading } = useUserCategories();
   const { toast } = useToast();
 
   const canCreateInvoice = isAdmin || canCreate('sales_invoices');
 
   const fetchInvoices = async () => {
+    if (categoriesLoading) return;
+    
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -42,14 +46,25 @@ const SalesInvoices = () => {
           profiles(full_name),
           sales_invoice_items(
             *,
-            inventory_items(name)
+            inventory_items(name, category_id)
           ),
           delivery_notes(id, delivery_note_number, status)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setInvoices(data || []);
+      
+      // Filter invoices based on user's category access
+      let filteredData = data || [];
+      if (hasRestrictions && userCategories.length > 0) {
+        const categoryIds = userCategories.map(c => c.id);
+        // Keep invoices that have at least one item in user's categories
+        filteredData = filteredData.filter(inv => {
+          const items = inv.sales_invoice_items || [];
+          return items.some((item: any) => categoryIds.includes(item.inventory_items?.category_id));
+        });
+      }
+      setInvoices(filteredData);
     } catch (error: any) {
       console.error('Error fetching invoices:', error);
       toast({
@@ -63,8 +78,10 @@ const SalesInvoices = () => {
   };
 
   useEffect(() => {
-    fetchInvoices();
-  }, []);
+    if (!categoriesLoading) {
+      fetchInvoices();
+    }
+  }, [categoriesLoading, userCategories]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

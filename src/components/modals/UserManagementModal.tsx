@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Pencil, Trash2, Plus, User, Shield, UserPlus, Loader2, Eye, EyeOff, Key } from 'lucide-react';
+import { Pencil, Trash2, Plus, User, Shield, UserPlus, Loader2, Eye, EyeOff, Key, FolderOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -23,6 +23,12 @@ interface UserProfile {
   is_active: boolean;
   created_at: string;
   roles: string[];
+  assignedCategories: string[];
+}
+
+interface Category {
+  id: string;
+  name: string;
 }
 
 interface UserManagementModalProps {
@@ -32,6 +38,7 @@ interface UserManagementModalProps {
 
 export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalProps) => {
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
@@ -47,10 +54,25 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
   const [newPassword, setNewPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [editingCategoriesUserId, setEditingCategoriesUserId] = useState<string | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [savingCategories, setSavingCategories] = useState(false);
   const { toast } = useToast();
   const { isAdmin } = useUserRole();
 
   const AVAILABLE_ROLES = ['admin', 'sales_staff', 'inventory_staff', 'accountant', 'management'];
+
+  const fetchCategories = async () => {
+    const { data, error } = await supabase
+      .from('product_categories')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('name');
+    
+    if (!error && data) {
+      setCategories(data);
+    }
+  };
 
   const fetchUsers = async () => {
     if (!isAdmin) return;
@@ -70,11 +92,21 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
 
       if (rolesError) throw rolesError;
 
+      // Fetch user categories
+      const { data: userCats, error: catsError } = await supabase
+        .from('user_categories')
+        .select('user_id, category_id');
+
+      if (catsError) throw catsError;
+
       const usersWithRoles = (profiles || []).map(profile => ({
         ...profile,
         roles: (userRoles || [])
           .filter(ur => ur.user_id === profile.user_id)
-          .map(ur => ur.role)
+          .map(ur => ur.role),
+        assignedCategories: (userCats || [])
+          .filter(uc => uc.user_id === profile.user_id)
+          .map(uc => uc.category_id)
       }));
 
       setUsers(usersWithRoles);
@@ -92,8 +124,70 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
   useEffect(() => {
     if (open && isAdmin) {
       fetchUsers();
+      fetchCategories();
     }
   }, [open, isAdmin]);
+
+  const startEditingCategories = (user: UserProfile) => {
+    setEditingCategoriesUserId(user.user_id);
+    setSelectedCategories(user.assignedCategories || []);
+  };
+
+  const cancelEditingCategories = () => {
+    setEditingCategoriesUserId(null);
+    setSelectedCategories([]);
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(categoryId) 
+        ? prev.filter(c => c !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  const saveCategories = async (userId: string) => {
+    setSavingCategories(true);
+    try {
+      // Delete existing category assignments
+      await supabase
+        .from('user_categories')
+        .delete()
+        .eq('user_id', userId);
+
+      // Insert new category assignments
+      if (selectedCategories.length > 0) {
+        const { error } = await supabase
+          .from('user_categories')
+          .insert(
+            selectedCategories.map(categoryId => ({
+              user_id: userId,
+              category_id: categoryId,
+            }))
+          );
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: 'نجاح',
+        description: selectedCategories.length > 0 
+          ? 'تم تحديث أقسام المستخدم بنجاح' 
+          : 'تم إزالة قيود الأقسام - المستخدم يرى جميع الأقسام',
+      });
+      
+      cancelEditingCategories();
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: 'خطأ',
+        description: `فشل في تحديث الأقسام: ${error.message}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingCategories(false);
+    }
+  };
 
   const startEditingRoles = (user: UserProfile) => {
     setEditingUserId(user.user_id);
@@ -495,6 +589,7 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                         <TableHead className="whitespace-nowrap">Email</TableHead>
                         <TableHead className="whitespace-nowrap hidden md:table-cell">Phone</TableHead>
                         <TableHead className="whitespace-nowrap">Roles</TableHead>
+                        <TableHead className="whitespace-nowrap">الأقسام</TableHead>
                         <TableHead className="whitespace-nowrap">Status</TableHead>
                         <TableHead className="whitespace-nowrap min-w-[200px]">Actions</TableHead>
                       </TableRow>
@@ -532,6 +627,76 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                                   </Badge>
                                 )) : (
                                   <span className="text-muted-foreground text-sm">No roles</span>
+                                )}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {editingCategoriesUserId === user.user_id ? (
+                              <div className="space-y-2 min-w-[200px] max-h-[200px] overflow-y-auto">
+                                {categories.map(cat => (
+                                  <div key={cat.id} className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id={`${user.user_id}-cat-${cat.id}`}
+                                      checked={selectedCategories.includes(cat.id)}
+                                      onCheckedChange={() => toggleCategory(cat.id)}
+                                    />
+                                    <Label 
+                                      htmlFor={`${user.user_id}-cat-${cat.id}`}
+                                      className="text-xs font-normal cursor-pointer whitespace-nowrap"
+                                    >
+                                      {cat.name}
+                                    </Label>
+                                  </div>
+                                ))}
+                                <div className="flex gap-2 pt-2 border-t">
+                                  <Button 
+                                    variant="default" 
+                                    size="sm"
+                                    onClick={() => saveCategories(user.user_id)}
+                                    disabled={savingCategories}
+                                  >
+                                    {savingCategories ? <Loader2 className="h-4 w-4 animate-spin" /> : 'حفظ'}
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={cancelEditingCategories}
+                                  >
+                                    إلغاء
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                {user.assignedCategories && user.assignedCategories.length > 0 ? (
+                                  <>
+                                    <Badge variant="outline" className="text-xs">
+                                      {user.assignedCategories.length} قسم
+                                    </Badge>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => startEditingCategories(user)}
+                                      title="تعديل الأقسام"
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <FolderOpen className="h-3 w-3" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="text-muted-foreground text-xs">الكل</span>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => startEditingCategories(user)}
+                                      title="تخصيص الأقسام"
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <FolderOpen className="h-3 w-3" />
+                                    </Button>
+                                  </>
                                 )}
                               </div>
                             )}

@@ -10,6 +10,7 @@ import { ViewQuotationModal } from "@/components/modals/ViewQuotationModal";
 import { EditQuotationModal } from "@/components/modals/EditQuotationModal";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { useUserCategories } from "@/hooks/useUserCategories";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { generateQuotationPDF, printQuotation } from "@/utils/pdfExport";
@@ -25,6 +26,7 @@ const Quotations = () => {
   const [quotationToDelete, setQuotationToDelete] = useState<any>(null);
   const { isAdmin } = useUserRole();
   const { canCreate, canView, canDelete } = useUserPermissions();
+  const { userCategories, hasRestrictions, loading: categoriesLoading } = useUserCategories();
   const { toast } = useToast();
 
   const displayName = (fullName?: string) => {
@@ -38,22 +40,38 @@ const Quotations = () => {
   };
 
   const fetchQuotations = async () => {
+    if (categoriesLoading) return;
+    
     setLoading(true);
     const { data, error } = await supabase
       .from('quotations')
-      .select('*, customers(name), quotation_items(*, inventory_items(name)), profiles!quotations_created_by_fkey(full_name)')
+      .select('*, customers(name), quotation_items(*, inventory_items(name, category_id)), profiles!quotations_created_by_fkey(full_name)')
       .order('created_at', { ascending: false });
+    
     if (error) {
       toast({ title: 'Error', description: `Failed to load quotations: ${error.message}`, variant: 'destructive' });
+      setQuotations([]);
     } else {
-      setQuotations(data || []);
+      // Filter quotations based on user's category access
+      let filteredData = data || [];
+      if (hasRestrictions && userCategories.length > 0) {
+        const categoryIds = userCategories.map(c => c.id);
+        // Keep quotations that have at least one item in user's categories
+        filteredData = filteredData.filter(q => {
+          const items = q.quotation_items || [];
+          return items.some((item: any) => categoryIds.includes(item.inventory_items?.category_id));
+        });
+      }
+      setQuotations(filteredData);
     }
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchQuotations();
-  }, []);
+    if (!categoriesLoading) {
+      fetchQuotations();
+    }
+  }, [categoriesLoading, userCategories]);
 
   const handleView = (quotation: any) => {
     setSelectedQuotation(quotation);
