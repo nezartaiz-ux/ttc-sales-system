@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { AddItemModal } from "@/components/modals/AddItemModal";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUserCategories } from "@/hooks/useUserCategories";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -19,18 +20,34 @@ const Inventory = () => {
   const [loading, setLoading] = useState(true);
   const [showInStockOnly, setShowInStockOnly] = useState(false);
   const { isInventory, isAdmin } = useUserRole();
+  const { userCategories, hasRestrictions, loading: categoriesLoading } = useUserCategories();
   const { toast } = useToast();
 
   const fetchItems = async () => {
+    if (categoriesLoading) return;
+    
     setLoading(true);
-    const { data, error } = await supabase
-      .from('inventory_items')
-      .select('*, product_categories(name), suppliers(name)')
-      .order('product_categories(name)', { ascending: true });
-    if (error) {
+    try {
+      let query = supabase
+        .from('inventory_items')
+        .select('*, product_categories(name), suppliers(name)')
+        .order('product_categories(name)', { ascending: true });
+
+      // Filter by user's categories if they have restrictions
+      if (hasRestrictions && userCategories.length > 0) {
+        const categoryIds = userCategories.map(c => c.id);
+        query = query.in('category_id', categoryIds);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) {
+        toast({ title: 'Error', description: `Failed to load inventory: ${error.message}`, variant: 'destructive' });
+      } else {
+        setItems(data || []);
+      }
+    } catch (error: any) {
       toast({ title: 'Error', description: `Failed to load inventory: ${error.message}`, variant: 'destructive' });
-    } else {
-      setItems(data || []);
     }
     setLoading(false);
   };
@@ -48,8 +65,10 @@ const Inventory = () => {
   }, {});
 
   useEffect(() => {
-    fetchItems();
-  }, []);
+    if (!categoriesLoading) {
+      fetchItems();
+    }
+  }, [categoriesLoading, userCategories]);
 
   const handleDeleteItem = async (itemId: string) => {
     try {

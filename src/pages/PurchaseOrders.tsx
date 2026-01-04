@@ -9,6 +9,7 @@ import { CreatePOModal } from "@/components/modals/CreatePOModal";
 import { ViewPOModal } from "@/components/modals/ViewPOModal";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { useUserCategories } from "@/hooks/useUserCategories";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { generatePOPDF, printPO } from "@/utils/pdfExport";
@@ -23,6 +24,7 @@ const PurchaseOrders = () => {
   const [poToDelete, setPoToDelete] = useState<any>(null);
   const { isAdmin } = useUserRole();
   const { canCreate, canView, canDelete } = useUserPermissions();
+  const { userCategories, hasRestrictions, loading: categoriesLoading } = useUserCategories();
   const { toast } = useToast();
 
   const displayName = (fullName?: string) => {
@@ -37,22 +39,38 @@ const PurchaseOrders = () => {
   };
 
   const fetchPurchaseOrders = async () => {
+    if (categoriesLoading) return;
+    
     setLoading(true);
     const { data, error } = await supabase
       .from('purchase_orders')
-      .select('*, suppliers(name), purchase_order_items(*, inventory_items(name)), profiles!purchase_orders_created_by_fkey(full_name)')
+      .select('*, suppliers(name), purchase_order_items(*, inventory_items(name, category_id)), profiles!purchase_orders_created_by_fkey(full_name)')
       .order('created_at', { ascending: false });
+    
     if (error) {
       toast({ title: 'Error', description: `Failed to load purchase orders: ${error.message}`, variant: 'destructive' });
+      setPurchaseOrders([]);
     } else {
-      setPurchaseOrders(data || []);
+      // Filter POs based on user's category access
+      let filteredData = data || [];
+      if (hasRestrictions && userCategories.length > 0) {
+        const categoryIds = userCategories.map(c => c.id);
+        // Keep POs that have at least one item in user's categories
+        filteredData = filteredData.filter(po => {
+          const items = po.purchase_order_items || [];
+          return items.some((item: any) => categoryIds.includes(item.inventory_items?.category_id));
+        });
+      }
+      setPurchaseOrders(filteredData);
     }
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchPurchaseOrders();
-  }, []);
+    if (!categoriesLoading) {
+      fetchPurchaseOrders();
+    }
+  }, [categoriesLoading, userCategories]);
 
   const handleView = (po: any) => {
     setSelectedPO(po);
