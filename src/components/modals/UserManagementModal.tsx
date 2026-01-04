@@ -193,13 +193,10 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
 
     setResettingPassword(true);
     try {
-      // Note: Admin password reset requires Supabase admin functions
-      // For now, we'll use auth.updateUser if the admin is the current user
-      // or provide instructions for the user
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
       if (currentUser && currentUser.id === userId) {
-        // Current user can update their own password
+        // Current user can update their own password directly
         const { error } = await supabase.auth.updateUser({ password: newPassword });
         if (error) throw error;
         
@@ -208,21 +205,29 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
           description: 'Password updated successfully',
         });
       } else {
-        // For other users, we need to send a password reset email
-        const userToReset = users.find(u => u.user_id === userId);
-        if (userToReset?.email) {
-          const { error } = await supabase.auth.resetPasswordForEmail(userToReset.email, {
-            redirectTo: `${window.location.origin}/`,
-          });
-          if (error) throw error;
-          
-          toast({
-            title: 'Password Reset Email Sent',
-            description: `A password reset link has been sent to ${userToReset.email}`,
-          });
-        } else {
-          throw new Error('User email not found');
+        // For other users, use the admin edge function
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('Not authenticated');
+
+        const response = await supabase.functions.invoke('admin-reset-password', {
+          body: {
+            targetUserId: userId,
+            newPassword: newPassword,
+          },
+        });
+
+        if (response.error) {
+          throw new Error(response.error.message || 'Failed to reset password');
         }
+
+        if (response.data?.error) {
+          throw new Error(response.data.error);
+        }
+        
+        toast({
+          title: 'Success',
+          description: 'Password has been reset successfully',
+        });
       }
       
       setResetPasswordUserId(null);
@@ -347,7 +352,7 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-[95vw] sm:max-w-[900px] lg:max-w-[1100px] max-h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>User Management</DialogTitle>
           <DialogDescription>
@@ -470,7 +475,7 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                 )}
               </div>
             </CardHeader>
-            <CardContent className="flex-1 overflow-hidden p-0">
+            <CardContent className="flex-1 overflow-auto p-0">
               {loading ? (
                 <div className="text-center py-8">
                   <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
@@ -482,24 +487,24 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                   <p>No users found</p>
                 </div>
               ) : (
-                <ScrollArea className="h-full px-6 pb-4">
+                <div className="overflow-auto max-h-[400px] px-4 pb-4">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 bg-card z-10">
                       <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead className="hidden md:table-cell">Phone</TableHead>
-                        <TableHead>Roles</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead className="whitespace-nowrap">Name</TableHead>
+                        <TableHead className="whitespace-nowrap">Email</TableHead>
+                        <TableHead className="whitespace-nowrap hidden md:table-cell">Phone</TableHead>
+                        <TableHead className="whitespace-nowrap">Roles</TableHead>
+                        <TableHead className="whitespace-nowrap">Status</TableHead>
+                        <TableHead className="whitespace-nowrap min-w-[200px]">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {users.map((user) => (
                         <TableRow key={user.id}>
-                          <TableCell className="font-medium">{user.full_name}</TableCell>
-                          <TableCell className="max-w-[150px] truncate">{user.email}</TableCell>
-                          <TableCell className="hidden md:table-cell">{user.phone || '-'}</TableCell>
+                          <TableCell className="font-medium whitespace-nowrap">{user.full_name}</TableCell>
+                          <TableCell className="whitespace-nowrap">{user.email}</TableCell>
+                          <TableCell className="hidden md:table-cell whitespace-nowrap">{user.phone || '-'}</TableCell>
                           <TableCell>
                             {editingUserId === user.user_id ? (
                               <div className="space-y-2 min-w-[180px]">
@@ -512,7 +517,7 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                                     />
                                     <Label 
                                       htmlFor={`${user.user_id}-${role}`}
-                                      className="text-sm font-normal cursor-pointer"
+                                      className="text-sm font-normal cursor-pointer whitespace-nowrap"
                                     >
                                       {role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                                     </Label>
@@ -522,7 +527,7 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                             ) : (
                               <div className="flex flex-wrap gap-1">
                                 {user.roles.length > 0 ? user.roles.map(role => (
-                                  <Badge key={role} variant="secondary" className="text-xs">
+                                  <Badge key={role} variant="secondary" className="text-xs whitespace-nowrap">
                                     {role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                                   </Badge>
                                 )) : (
@@ -534,13 +539,13 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                           <TableCell>
                             <Badge 
                               variant={user.is_active ? "default" : "secondary"}
-                              className="cursor-pointer"
+                              className="cursor-pointer whitespace-nowrap"
                               onClick={() => handleToggleActive(user.id, user.is_active)}
                             >
                               {user.is_active ? 'Active' : 'Inactive'}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="min-w-[200px]">
                             {editingUserId === user.user_id ? (
                               <div className="flex items-center gap-2">
                                 <Button 
@@ -559,7 +564,7 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                                 </Button>
                               </div>
                             ) : resetPasswordUserId === user.user_id ? (
-                              <div className="flex flex-col gap-2 min-w-[200px]">
+                              <div className="flex flex-col gap-2 min-w-[220px]">
                                 <div className="relative">
                                   <Input
                                     type={showNewPassword ? "text" : "password"}
@@ -597,7 +602,7 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1 flex-nowrap">
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
@@ -619,6 +624,7 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                                   size="sm"
                                   onClick={() => handleToggleActive(user.id, user.is_active)}
                                   title={user.is_active ? 'Deactivate' : 'Activate'}
+                                  className="whitespace-nowrap"
                                 >
                                   {user.is_active ? 'Deactivate' : 'Activate'}
                                 </Button>
@@ -629,7 +635,7 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                       ))}
                     </TableBody>
                   </Table>
-                </ScrollArea>
+                </div>
               )}
             </CardContent>
           </Card>
