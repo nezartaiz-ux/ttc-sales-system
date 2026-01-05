@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "react-router-dom";
 import { 
   Home, 
@@ -15,8 +16,11 @@ import {
   BookOpen,
   ClipboardList,
   Image,
-  X
+  X,
+  Zap,
+  Tractor
 } from "lucide-react";
+import { useUserCategories } from "@/hooks/useUserCategories";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
@@ -34,6 +38,25 @@ const navigation = [
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
+// Category-specific configurations
+const categoryConfig: Record<string, { icon: React.ComponentType<any>; color: string; bgColor: string }> = {
+  'مولدات كهربائية': { 
+    icon: Zap,
+    color: 'text-yellow-600',
+    bgColor: 'bg-yellow-100 dark:bg-yellow-900/30'
+  },
+  'معدات ثقيلة': { 
+    icon: Truck,
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-100 dark:bg-orange-900/30'
+  },
+  'حراثات زراعية': { 
+    icon: Tractor,
+    color: 'text-green-600',
+    bgColor: 'bg-green-100 dark:bg-green-900/30'
+  },
+};
+
 interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
@@ -41,6 +64,34 @@ interface SidebarProps {
 
 export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
   const location = useLocation();
+  const { userCategories, hasRestrictions, isAdmin, loading } = useUserCategories();
+
+  // Get category display info
+  const getCategoryInfo = () => {
+    if (isAdmin) return null;
+    if (!hasRestrictions || userCategories.length === 0) return null;
+    
+    if (userCategories.length === 1) {
+      const categoryName = userCategories[0]?.name || '';
+      const config = categoryConfig[categoryName];
+      return {
+        name: categoryName,
+        icon: config?.icon || Package,
+        color: config?.color || 'text-primary',
+        bgColor: config?.bgColor || 'bg-primary/10'
+      };
+    }
+
+    // Multiple categories
+    return {
+      name: `${userCategories.length} أقسام`,
+      icon: Package,
+      color: 'text-primary',
+      bgColor: 'bg-primary/10'
+    };
+  };
+
+  const categoryInfo = getCategoryInfo();
 
   return (
     <>
@@ -83,6 +134,18 @@ export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
             </div>
           </div>
 
+          {/* Category Indicator */}
+          {!loading && categoryInfo && (
+            <div className="px-4 py-3 border-b border-border">
+              <div className={cn("flex items-center gap-2 p-2 rounded-lg", categoryInfo.bgColor)}>
+                <categoryInfo.icon className={cn("w-4 h-4", categoryInfo.color)} />
+                <span className={cn("text-sm font-medium", categoryInfo.color)}>
+                  {categoryInfo.name}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
@@ -113,6 +176,11 @@ export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
           <div className="p-4 border-t border-border">
             <div className="text-xs text-muted-foreground text-center">
               <p>Tehama Trading Co.</p>
+              {isAdmin && (
+                <Badge variant="secondary" className="mt-2">
+                  مدير النظام
+                </Badge>
+              )}
             </div>
           </div>
         </div>
