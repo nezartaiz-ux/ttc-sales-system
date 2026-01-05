@@ -11,6 +11,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserCategories } from '@/hooks/useUserCategories';
 import { z } from 'zod';
 
 const DEFAULT_TERMS_CONDITIONS = `TERMS AND CONDITIONS OF SALE :
@@ -107,17 +108,31 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const { user } = useAuth();
+  const { getCategoryIds, hasRestrictions, loading: categoriesLoading } = useUserCategories();
 
   useEffect(() => {
     const loadData = async () => {
+      const categoryIds = getCategoryIds();
+      
+      let inventoryQuery = supabase
+        .from('inventory_items')
+        .select('id, name, selling_price, category_id')
+        .eq('is_active', true)
+        .order('name');
+      
+      // Filter by user's categories if they have restrictions
+      if (hasRestrictions && categoryIds.length > 0) {
+        inventoryQuery = inventoryQuery.in('category_id', categoryIds);
+      }
+
       const [{ data: customers }, { data: inventory }] = await Promise.all([
         supabase.from('customers').select('id, name').eq('is_active', true).order('name'),
-        supabase.from('inventory_items').select('id, name, selling_price').eq('is_active', true).order('name')
+        inventoryQuery
       ]);
       setCustomers(customers || []);
       setInventoryItems(inventory || []);
     };
-    if (open) {
+    if (open && !categoriesLoading) {
       loadData();
       // Reset validity_period and notes when modal opens
       setFormData(prev => ({ 
@@ -126,7 +141,7 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
         notes: DEFAULT_TERMS_CONDITIONS
       }));
     }
-  }, [open]);
+  }, [open, categoriesLoading, hasRestrictions]);
 
   const addItem = () => {
     setItems(prev => [...prev, {

@@ -11,6 +11,7 @@ import { Plus, Trash2, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserCategories } from '@/hooks/useUserCategories';
 import { z } from 'zod';
 
 const purchaseOrderSchema = z.object({
@@ -51,25 +52,39 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const { user } = useAuth();
+  const { getCategoryIds, hasRestrictions, loading: categoriesLoading } = useUserCategories();
 
   useEffect(() => {
     const loadData = async () => {
+      const categoryIds = getCategoryIds();
+      
+      let inventoryQuery = supabase
+        .from('inventory_items')
+        .select('id, name, unit_price, category_id')
+        .eq('is_active', true)
+        .order('name');
+      
+      // Filter by user's categories if they have restrictions
+      if (hasRestrictions && categoryIds.length > 0) {
+        inventoryQuery = inventoryQuery.in('category_id', categoryIds);
+      }
+
       const [{ data: suppliers }, { data: inventory }, { data: quots }] = await Promise.all([
         supabase.from('suppliers').select('id, name').eq('is_active', true).order('name'),
-        supabase.from('inventory_items').select('id, name, unit_price').eq('is_active', true).order('name'),
+        inventoryQuery,
         supabase.from('quotations').select('id, quotation_number, customer_id').order('created_at', { ascending: false })
       ]);
       setSuppliers(suppliers || []);
       setInventoryItems(inventory || []);
       setQuotations(quots || []);
     };
-    if (open) {
+    if (open && !categoriesLoading) {
       loadData();
       // Reset expected_delivery_date to today when modal opens
       setFormData(prev => ({ ...prev, expected_delivery_date: new Date().toISOString().split('T')[0] }));
       setSelectedQuotationId('');
     }
-  }, [open]);
+  }, [open, categoriesLoading, hasRestrictions]);
 
   const addItem = () => {
     setItems(prev => [...prev, {
