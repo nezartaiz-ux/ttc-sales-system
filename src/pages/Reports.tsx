@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, BarChart3, TrendingUp, PieChart, FileText, Truck } from "lucide-react";
+import { Download, BarChart3, TrendingUp, PieChart, FileText, Truck, Zap, Tractor } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { exportToCSV } from "@/utils/csvExport";
 import { generateReportPDF, generateDetailedQuotationReport, generateDetailedInventoryReport } from "@/utils/reportPdfExport";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserCategories } from "@/hooks/useUserCategories";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
@@ -25,6 +26,11 @@ const Reports = () => {
   const [totalQuotations, setTotalQuotations] = useState(0);
   const [totalDeliveryNotes, setTotalDeliveryNotes] = useState(0);
   
+  // Category-specific stats
+  const [categoryStats, setCategoryStats] = useState<{[key: string]: {items: number, quotations: number, invoices: number}}>({});
+  const [categories, setCategories] = useState<{id: string, name: string}[]>([]);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
+  
   // Delivery notes report filters
   const [dnStartDate, setDnStartDate] = useState<string>('');
   const [dnEndDate, setDnEndDate] = useState<string>('');
@@ -36,6 +42,7 @@ const Reports = () => {
   
   const { toast } = useToast();
   const { user } = useAuth();
+  const { userCategories, hasRestrictions, isAdmin, getCategoryIds } = useUserCategories();
 
   // Fetch user's full name
   useEffect(() => {
@@ -45,49 +52,129 @@ const Reports = () => {
           .from('profiles')
           .select('full_name')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
         if (data) setUserFullName(data.full_name);
       }
     };
     fetchUserInfo();
   }, [user]);
 
-  // Fetch summary data
+  // Fetch summary data with category filtering
   useEffect(() => {
     const fetchSummaryData = async () => {
       try {
-        const [invoicesRes, quotationsRes, deliveryNotesRes, customersRes] = await Promise.all([
-          supabase.from('sales_invoices').select('grand_total, status'),
-          supabase.from('quotations').select('id'),
-          supabase.from('delivery_notes').select('id'),
-          supabase.from('customers').select('id, name').eq('is_active', true).order('name')
-        ]);
+        const categoryIds = getCategoryIds();
         
-        if (invoicesRes.data) {
-          setTotalInvoices(invoicesRes.data.length);
-          const paidRevenue = invoicesRes.data
-            .filter(inv => inv.status === 'paid')
-            .reduce((sum, inv) => sum + (inv.grand_total || 0), 0);
-          setTotalRevenue(paidRevenue);
+        // Fetch categories
+        const { data: cats } = await supabase
+          .from('product_categories')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('name');
+        setCategories(cats || []);
+
+        // Get all inventory items with categories
+        let inventoryQuery = supabase.from('inventory_items').select('id, category_id');
+        if (hasRestrictions && categoryIds.length > 0) {
+          inventoryQuery = inventoryQuery.in('category_id', categoryIds);
+        }
+        const { data: inventoryItems } = await inventoryQuery;
+        const validItemIds = inventoryItems?.map(i => i.id) || [];
+
+        // Fetch invoices
+        const { data: invoicesData } = await supabase
+          .from('sales_invoices')
+          .select('id, grand_total, status');
+        
+        // Fetch invoice items to filter by category
+        const { data: invoiceItems } = await supabase
+          .from('sales_invoice_items')
+          .select('sales_invoice_id, inventory_item_id');
+        
+        let filteredInvoices = invoicesData || [];
+        if (hasRestrictions && categoryIds.length > 0) {
+          const validInvoiceIds = new Set(
+            invoiceItems?.filter(ii => validItemIds.includes(ii.inventory_item_id))
+              .map(ii => ii.sales_invoice_id) || []
+          );
+          filteredInvoices = filteredInvoices.filter(inv => validInvoiceIds.has(inv.id));
         }
         
-        if (quotationsRes.data) {
-          setTotalQuotations(quotationsRes.data.length);
-        }
+        setTotalInvoices(filteredInvoices.length);
+        const paidRevenue = filteredInvoices
+          .filter(inv => inv.status === 'paid')
+          .reduce((sum, inv) => sum + (inv.grand_total || 0), 0);
+        setTotalRevenue(paidRevenue);
+
+        // Fetch quotations with category filtering
+        const { data: quotationsData } = await supabase.from('quotations').select('id');
+        const { data: quotationItems } = await supabase
+          .from('quotation_items')
+          .select('quotation_id, inventory_item_id');
         
-        if (deliveryNotesRes.data) {
-          setTotalDeliveryNotes(deliveryNotesRes.data.length);
+        let filteredQuotations = quotationsData || [];
+        if (hasRestrictions && categoryIds.length > 0) {
+          const validQuotationIds = new Set(
+            quotationItems?.filter(qi => validItemIds.includes(qi.inventory_item_id))
+              .map(qi => qi.quotation_id) || []
+          );
+          filteredQuotations = filteredQuotations.filter(q => validQuotationIds.has(q.id));
         }
+        setTotalQuotations(filteredQuotations.length);
+
+        // Fetch delivery notes
+        const { data: deliveryNotesData } = await supabase.from('delivery_notes').select('id');
+        const { data: deliveryNoteItems } = await supabase
+          .from('delivery_note_items')
+          .select('delivery_note_id, inventory_item_id');
         
-        if (customersRes.data) {
-          setCustomers(customersRes.data);
+        let filteredDN = deliveryNotesData || [];
+        if (hasRestrictions && categoryIds.length > 0) {
+          const validDNIds = new Set(
+            deliveryNoteItems?.filter(dni => validItemIds.includes(dni.inventory_item_id || ''))
+              .map(dni => dni.delivery_note_id) || []
+          );
+          filteredDN = filteredDN.filter(dn => validDNIds.has(dn.id));
         }
+        setTotalDeliveryNotes(filteredDN.length);
+
+        // Fetch customers
+        const { data: customersData } = await supabase
+          .from('customers')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('name');
+        setCustomers(customersData || []);
+
+        // Calculate category-specific stats
+        const stats: {[key: string]: {items: number, quotations: number, invoices: number}} = {};
+        for (const cat of (cats || [])) {
+          const catItems = inventoryItems?.filter(i => i.category_id === cat.id) || [];
+          const catItemIds = catItems.map(i => i.id);
+          
+          const catQuotationIds = new Set(
+            quotationItems?.filter(qi => catItemIds.includes(qi.inventory_item_id))
+              .map(qi => qi.quotation_id) || []
+          );
+          
+          const catInvoiceIds = new Set(
+            invoiceItems?.filter(ii => catItemIds.includes(ii.inventory_item_id))
+              .map(ii => ii.sales_invoice_id) || []
+          );
+          
+          stats[cat.id] = {
+            items: catItems.length,
+            quotations: catQuotationIds.size,
+            invoices: catInvoiceIds.size
+          };
+        }
+        setCategoryStats(stats);
       } catch (error) {
         console.error('Error fetching summary data:', error);
       }
     };
     fetchSummaryData();
-  }, []);
+  }, [hasRestrictions]);
 
   // Fetch delivery notes with filters
   const fetchDeliveryNotes = async () => {
@@ -430,6 +517,60 @@ const Reports = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Category-Specific Reports Section */}
+        {(isAdmin || userCategories.length > 0) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PieChart className="h-5 w-5" />
+                Category Reports
+              </CardTitle>
+              <CardDescription>Statistics by product category</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {(hasRestrictions ? userCategories : categories).map(cat => {
+                  const stats = categoryStats[cat.id] || { items: 0, quotations: 0, invoices: 0 };
+                  const catConfig: {[key: string]: {icon: any, color: string, bgColor: string}} = {
+                    'مولدات كهربائية': { icon: Zap, color: 'text-yellow-600', bgColor: 'bg-yellow-100 dark:bg-yellow-900/30' },
+                    'معدات ثقيلة': { icon: Truck, color: 'text-orange-600', bgColor: 'bg-orange-100 dark:bg-orange-900/30' },
+                    'حراثات زراعية': { icon: Tractor, color: 'text-green-600', bgColor: 'bg-green-100 dark:bg-green-900/30' },
+                  };
+                  const config = catConfig[cat.name] || { icon: BarChart3, color: 'text-primary', bgColor: 'bg-primary/10' };
+                  const IconComponent = config.icon;
+                  
+                  return (
+                    <Card key={cat.id} className={`${config.bgColor} border-0`}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className={`text-sm font-medium flex items-center gap-2 ${config.color}`}>
+                          <IconComponent className="h-4 w-4" />
+                          {cat.name}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div>
+                            <div className="text-xl font-bold">{stats.items}</div>
+                            <p className="text-xs text-muted-foreground">Items</p>
+                          </div>
+                          <div>
+                            <div className="text-xl font-bold">{stats.quotations}</div>
+                            <p className="text-xs text-muted-foreground">Quotations</p>
+                          </div>
+                          <div>
+                            <div className="text-xl font-bold">{stats.invoices}</div>
+                            <p className="text-xs text-muted-foreground">Invoices</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>

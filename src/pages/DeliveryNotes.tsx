@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { CreateDeliveryNoteModal } from "@/components/modals/CreateDeliveryNoteModal";
 import { ViewDeliveryNoteModal } from "@/components/modals/ViewDeliveryNoteModal";
 import { EditDeliveryNoteModal } from "@/components/modals/EditDeliveryNoteModal";
+import { useUserCategories } from "@/hooks/useUserCategories";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,11 +41,15 @@ const DeliveryNotes = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { getCategoryIds, hasRestrictions, loading: categoriesLoading } = useUserCategories();
 
   const { data: deliveryNotes, isLoading } = useQuery({
-    queryKey: ['delivery-notes'],
+    queryKey: ['delivery-notes', hasRestrictions, categoriesLoading],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const categoryIds = getCategoryIds();
+      
+      // First get delivery notes
+      const { data: notes, error } = await supabase
         .from('delivery_notes')
         .select(`
           *,
@@ -54,8 +59,32 @@ const DeliveryNotes = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
-    }
+      if (!notes) return [];
+
+      // If user has category restrictions, filter delivery notes by items' categories
+      if (hasRestrictions && categoryIds.length > 0) {
+        // Get all delivery note items with their inventory items
+        const noteIds = notes.map(n => n.id);
+        const { data: items } = await supabase
+          .from('delivery_note_items')
+          .select('delivery_note_id, inventory_item_id, inventory_items(category_id)')
+          .in('delivery_note_id', noteIds);
+        
+        // Filter notes that have at least one item from user's categories
+        const validNoteIds = new Set<string>();
+        items?.forEach(item => {
+          const categoryId = (item as any).inventory_items?.category_id;
+          if (categoryId && categoryIds.includes(categoryId)) {
+            validNoteIds.add(item.delivery_note_id);
+          }
+        });
+        
+        return notes.filter(n => validNoteIds.has(n.id));
+      }
+
+      return notes;
+    },
+    enabled: !categoriesLoading
   });
 
   const deleteMutation = useMutation({

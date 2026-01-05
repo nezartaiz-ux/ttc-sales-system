@@ -170,18 +170,18 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
       }
 
       toast({
-        title: 'نجاح',
+        title: 'Success',
         description: selectedCategories.length > 0 
-          ? 'تم تحديث أقسام المستخدم بنجاح' 
-          : 'تم إزالة قيود الأقسام - المستخدم يرى جميع الأقسام',
+          ? 'User categories updated successfully' 
+          : 'Category restrictions removed - user can see all categories',
       });
       
       cancelEditingCategories();
       fetchUsers();
     } catch (error: any) {
       toast({
-        title: 'خطأ',
-        description: `فشل في تحديث الأقسام: ${error.message}`,
+        title: 'Error',
+        description: `Failed to update categories: ${error.message}`,
         variant: 'destructive',
       });
     } finally {
@@ -589,7 +589,7 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                         <TableHead className="whitespace-nowrap">Email</TableHead>
                         <TableHead className="whitespace-nowrap hidden md:table-cell">Phone</TableHead>
                         <TableHead className="whitespace-nowrap">Roles</TableHead>
-                        <TableHead className="whitespace-nowrap">الأقسام</TableHead>
+                        <TableHead className="whitespace-nowrap">Categories</TableHead>
                         <TableHead className="whitespace-nowrap">Status</TableHead>
                         <TableHead className="whitespace-nowrap min-w-[200px]">Actions</TableHead>
                       </TableRow>
@@ -656,14 +656,14 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                                     onClick={() => saveCategories(user.user_id)}
                                     disabled={savingCategories}
                                   >
-                                    {savingCategories ? <Loader2 className="h-4 w-4 animate-spin" /> : 'حفظ'}
+                                    {savingCategories ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
                                   </Button>
                                   <Button 
                                     variant="outline" 
                                     size="sm"
                                     onClick={cancelEditingCategories}
                                   >
-                                    إلغاء
+                                    Cancel
                                   </Button>
                                 </div>
                               </div>
@@ -672,13 +672,13 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                                 {user.assignedCategories && user.assignedCategories.length > 0 ? (
                                   <>
                                     <Badge variant="outline" className="text-xs">
-                                      {user.assignedCategories.length} قسم
+                                      {user.assignedCategories.length} {user.assignedCategories.length === 1 ? 'category' : 'categories'}
                                     </Badge>
                                     <Button 
                                       variant="ghost" 
                                       size="sm"
                                       onClick={() => startEditingCategories(user)}
-                                      title="تعديل الأقسام"
+                                      title="Edit Categories"
                                       className="h-6 w-6 p-0"
                                     >
                                       <FolderOpen className="h-3 w-3" />
@@ -686,12 +686,12 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                                   </>
                                 ) : (
                                   <>
-                                    <span className="text-muted-foreground text-xs">الكل</span>
+                                    <span className="text-muted-foreground text-xs">All</span>
                                     <Button 
                                       variant="ghost" 
                                       size="sm"
                                       onClick={() => startEditingCategories(user)}
-                                      title="تخصيص الأقسام"
+                                      title="Assign Categories"
                                       className="h-6 w-6 p-0"
                                     >
                                       <FolderOpen className="h-3 w-3" />
