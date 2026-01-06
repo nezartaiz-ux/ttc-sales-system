@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Upload } from "lucide-react";
+import { useUserCategories } from "@/hooks/useUserCategories";
 
 interface UploadImageModalProps {
   open: boolean;
@@ -17,13 +18,31 @@ interface UploadImageModalProps {
 type ImageCategory = 'generator' | 'equipment' | 'tractor';
 
 export const UploadImageModal = ({ open, onOpenChange }: UploadImageModalProps) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { userCategories, hasRestrictions } = useUserCategories();
+
+  // Get allowed categories based on user's product categories
+  const allowedCategories = useMemo(() => {
+    if (!hasRestrictions) return ['generator', 'equipment', 'tractor'];
+    
+    const categoryNames = userCategories.map(c => c.name.toLowerCase());
+    const allowed: string[] = [];
+    
+    categoryNames.forEach(name => {
+      if (name.includes('generator') || name.includes('مولد')) allowed.push('generator');
+      if (name.includes('equipment') || name.includes('معد')) allowed.push('equipment');
+      if (name.includes('tractor') || name.includes('حراث')) allowed.push('tractor');
+    });
+    
+    return [...new Set(allowed)];
+  }, [userCategories, hasRestrictions]);
+
   const [name, setName] = useState("");
-  const [category, setCategory] = useState<ImageCategory>("generator");
+  const [category, setCategory] = useState<ImageCategory>((allowedCategories[0] as ImageCategory) || "generator");
   const [model, setModel] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
@@ -144,9 +163,15 @@ export const UploadImageModal = ({ open, onOpenChange }: UploadImageModalProps) 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="generator">Generator</SelectItem>
-                <SelectItem value="equipment">Equipment</SelectItem>
-                <SelectItem value="tractor">Tractor</SelectItem>
+                {(!hasRestrictions || allowedCategories.includes('generator')) && (
+                  <SelectItem value="generator">Generator</SelectItem>
+                )}
+                {(!hasRestrictions || allowedCategories.includes('equipment')) && (
+                  <SelectItem value="equipment">Equipment</SelectItem>
+                )}
+                {(!hasRestrictions || allowedCategories.includes('tractor')) && (
+                  <SelectItem value="tractor">Tractor</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>

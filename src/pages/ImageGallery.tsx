@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Plus, Image as ImageIcon, Trash2, Printer, Search, X } from "lucide-rea
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useUserCategories } from "@/hooks/useUserCategories";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,24 @@ const ImageGallery = () => {
   const [viewingImage, setViewingImage] = useState<{ url: string; name: string; model: string } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { userCategories, hasRestrictions, loading: categoriesLoading } = useUserCategories();
+
+  // Get allowed image categories based on user's product categories
+  const allowedImageCategories = useMemo(() => {
+    if (!hasRestrictions) return ['generator', 'equipment', 'tractor'];
+    
+    const categoryNames = userCategories.map(c => c.name.toLowerCase());
+    const allowed: string[] = [];
+    
+    // Map product category names to image categories
+    categoryNames.forEach(name => {
+      if (name.includes('generator') || name.includes('مولد')) allowed.push('generator');
+      if (name.includes('equipment') || name.includes('معد')) allowed.push('equipment');
+      if (name.includes('tractor') || name.includes('حراث')) allowed.push('tractor');
+    });
+    
+    return [...new Set(allowed)];
+  }, [userCategories, hasRestrictions]);
 
   const { data: images = [], isLoading } = useQuery({
     queryKey: ['equipment-images'],
@@ -59,6 +78,12 @@ const ImageGallery = () => {
       return data as EquipmentImage[];
     },
   });
+
+  // Filter images by user's allowed categories
+  const accessibleImages = useMemo(() => {
+    if (!hasRestrictions) return images;
+    return images.filter(img => allowedImageCategories.includes(img.category));
+  }, [images, allowedImageCategories, hasRestrictions]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -156,12 +181,18 @@ const ImageGallery = () => {
     }
   };
 
-  const filteredImages = images.filter(img => 
+  const filteredImages = accessibleImages.filter(img => 
     img.category === selectedCategory && 
     (searchTerm === '' || 
      img.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
      img.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  // Determine the default tab based on allowed categories
+  const defaultCategory = useMemo(() => {
+    if (allowedImageCategories.includes(selectedCategory)) return selectedCategory;
+    return (allowedImageCategories[0] as ImageCategory) || 'generator';
+  }, [allowedImageCategories, selectedCategory]);
 
   // Group images by model
   const groupedImages = filteredImages.reduce((acc, img) => {
@@ -213,14 +244,20 @@ const ImageGallery = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <Tabs value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as ImageCategory)}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="generator">Generators</TabsTrigger>
-                <TabsTrigger value="equipment">Equipment</TabsTrigger>
-                <TabsTrigger value="tractor">Tractors</TabsTrigger>
+            <Tabs value={defaultCategory} onValueChange={(v) => setSelectedCategory(v as ImageCategory)}>
+              <TabsList className={`grid w-full grid-cols-${allowedImageCategories.length || 3}`}>
+                {(!hasRestrictions || allowedImageCategories.includes('generator')) && (
+                  <TabsTrigger value="generator">Generators</TabsTrigger>
+                )}
+                {(!hasRestrictions || allowedImageCategories.includes('equipment')) && (
+                  <TabsTrigger value="equipment">Equipment</TabsTrigger>
+                )}
+                {(!hasRestrictions || allowedImageCategories.includes('tractor')) && (
+                  <TabsTrigger value="tractor">Tractors</TabsTrigger>
+                )}
               </TabsList>
 
-              <TabsContent value={selectedCategory} className="mt-6">
+              <TabsContent value={defaultCategory} className="mt-6">
                 {isLoading ? (
                   <div className="text-center py-8 text-muted-foreground">Loading...</div>
                 ) : Object.keys(groupedImages).length === 0 ? (

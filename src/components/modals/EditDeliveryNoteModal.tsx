@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useUserCategories } from "@/hooks/useUserCategories";
 import { Plus, Trash2 } from "lucide-react";
 
 interface EditDeliveryNoteModalProps {
@@ -40,6 +41,7 @@ interface DeliveryItem {
 export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: EditDeliveryNoteModalProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { userCategories, hasRestrictions, getCategoryIds, loading: categoriesLoading } = useUserCategories();
 
   const [formData, setFormData] = useState({
     customer_id: "",
@@ -56,6 +58,22 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
   const [items, setItems] = useState<DeliveryItem[]>([
     { inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "", item_category: "generator" }
   ]);
+
+  // Get allowed item categories based on user's product categories
+  const allowedItemCategories = useMemo(() => {
+    if (!hasRestrictions) return ['generator', 'equipment', 'tractor'];
+    
+    const categoryNames = userCategories.map(c => c.name.toLowerCase());
+    const allowed: string[] = [];
+    
+    categoryNames.forEach(name => {
+      if (name.includes('generator') || name.includes('مولد')) allowed.push('generator');
+      if (name.includes('equipment') || name.includes('معد')) allowed.push('equipment');
+      if (name.includes('tractor') || name.includes('حراث')) allowed.push('tractor');
+    });
+    
+    return [...new Set(allowed)];
+  }, [userCategories, hasRestrictions]);
 
   // Load delivery note data
   useEffect(() => {
@@ -75,7 +93,7 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
       if (deliveryNote.items && deliveryNote.items.length > 0) {
         setItems(deliveryNote.items.map((item: any) => {
           // Extract category from remarks if it exists
-          let category = "generator";
+          let category = allowedItemCategories[0] || "generator";
           const remarksMatch = item.remarks?.match(/^\[(Generator|Equipment|Tractor)\]/i);
           if (remarksMatch) {
             category = remarksMatch[1].toLowerCase();
@@ -92,10 +110,10 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
           };
         }));
       } else {
-        setItems([{ inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "", item_category: "generator" }]);
+        setItems([{ inventory_item_id: "", model: "", description: "", quantity: 1, remarks: "", item_category: allowedItemCategories[0] || "generator" }]);
       }
     }
-  }, [deliveryNote, open]);
+  }, [deliveryNote, open, allowedItemCategories]);
 
   const { data: customers } = useQuery({
     queryKey: ['customers'],
@@ -111,16 +129,25 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
   });
 
   const { data: inventoryItems } = useQuery({
-    queryKey: ['inventory-items'],
+    queryKey: ['inventory-items-for-dn', hasRestrictions, userCategories],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('inventory_items')
-        .select('id, name, description')
+        .select('id, name, description, category_id')
         .eq('is_active', true)
         .order('name');
+      
+      // Filter by user's categories
+      const categoryIds = getCategoryIds();
+      if (hasRestrictions && categoryIds.length > 0) {
+        query = query.in('category_id', categoryIds);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !categoriesLoading,
   });
 
   const getCategoryLabel = (category: string) => {
@@ -379,9 +406,15 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="generator">Generator</SelectItem>
-                        <SelectItem value="equipment">Equipment</SelectItem>
-                        <SelectItem value="tractor">Tractor</SelectItem>
+                        {(!hasRestrictions || allowedItemCategories.includes('generator')) && (
+                          <SelectItem value="generator">Generator</SelectItem>
+                        )}
+                        {(!hasRestrictions || allowedItemCategories.includes('equipment')) && (
+                          <SelectItem value="equipment">Equipment</SelectItem>
+                        )}
+                        {(!hasRestrictions || allowedItemCategories.includes('tractor')) && (
+                          <SelectItem value="tractor">Tractor</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>

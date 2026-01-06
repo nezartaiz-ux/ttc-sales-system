@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Upload } from "lucide-react";
+import { useUserCategories } from "@/hooks/useUserCategories";
 
 interface UploadDatasheetModalProps {
   open: boolean;
@@ -17,25 +18,51 @@ interface UploadDatasheetModalProps {
 type DatasheetCategory = 'generator' | 'equipment' | 'tractor';
 
 export const UploadDatasheetModal = ({ open, onOpenChange }: UploadDatasheetModalProps) => {
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState<DatasheetCategory>("generator");
-  const [file, setFile] = useState<File | null>(null);
-  const [itemId, setItemId] = useState<string>("none");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { userCategories, hasRestrictions, getCategoryIds, loading: categoriesLoading } = useUserCategories();
+
+  // Get allowed categories based on user's product categories
+  const allowedCategories = useMemo(() => {
+    if (!hasRestrictions) return ['generator', 'equipment', 'tractor'];
+    
+    const categoryNames = userCategories.map(c => c.name.toLowerCase());
+    const allowed: string[] = [];
+    
+    categoryNames.forEach(name => {
+      if (name.includes('generator') || name.includes('مولد')) allowed.push('generator');
+      if (name.includes('equipment') || name.includes('معد')) allowed.push('equipment');
+      if (name.includes('tractor') || name.includes('حراث')) allowed.push('tractor');
+    });
+    
+    return [...new Set(allowed)];
+  }, [userCategories, hasRestrictions]);
+
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState<DatasheetCategory>((allowedCategories[0] as DatasheetCategory) || "generator");
+  const [file, setFile] = useState<File | null>(null);
+  const [itemId, setItemId] = useState<string>("none");
 
   const { data: inventoryItems = [] } = useQuery({
-    queryKey: ['inventory-items'],
+    queryKey: ['inventory-items-for-datasheet', hasRestrictions, userCategories],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('inventory_items')
-        .select('id, name')
+        .select('id, name, category_id')
         .eq('is_active', true)
         .order('name');
       
+      // Filter by user's categories
+      const categoryIds = getCategoryIds();
+      if (hasRestrictions && categoryIds.length > 0) {
+        query = query.in('category_id', categoryIds);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
+    enabled: !categoriesLoading,
   });
 
   const uploadMutation = useMutation({
@@ -135,9 +162,15 @@ export const UploadDatasheetModal = ({ open, onOpenChange }: UploadDatasheetModa
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="generator">Generator</SelectItem>
-                <SelectItem value="equipment">Equipment</SelectItem>
-                <SelectItem value="tractor">Tractor</SelectItem>
+                {(!hasRestrictions || allowedCategories.includes('generator')) && (
+                  <SelectItem value="generator">Generator</SelectItem>
+                )}
+                {(!hasRestrictions || allowedCategories.includes('equipment')) && (
+                  <SelectItem value="equipment">Equipment</SelectItem>
+                )}
+                {(!hasRestrictions || allowedCategories.includes('tractor')) && (
+                  <SelectItem value="tractor">Tractor</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
