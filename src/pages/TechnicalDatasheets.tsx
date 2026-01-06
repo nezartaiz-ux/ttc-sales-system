@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { UploadDatasheetModal } from "@/components/modals/UploadDatasheetModal";
+import { useUserCategories } from "@/hooks/useUserCategories";
 import {
   Table,
   TableBody,
@@ -42,7 +43,7 @@ interface Datasheet {
   file_path: string;
   file_size: number | null;
   created_at: string;
-  inventory_items: { name: string } | null;
+  inventory_items: { name: string; category_id: string } | null;
 }
 
 const TechnicalDatasheets = () => {
@@ -52,22 +53,54 @@ const TechnicalDatasheets = () => {
   const [viewingPdf, setViewingPdf] = useState<{ url: string; name: string } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { userCategories, hasRestrictions, getCategoryIds, loading: categoriesLoading } = useUserCategories();
 
   const { data: datasheets = [], isLoading } = useQuery({
-    queryKey: ['technical-datasheets'],
+    queryKey: ['technical-datasheets', hasRestrictions, userCategories],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('technical_datasheets')
         .select(`
           *,
-          inventory_items (name)
+          inventory_items (name, category_id)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as Datasheet[];
     },
+    enabled: !categoriesLoading,
   });
+
+  // Get allowed categories based on user's product categories
+  const allowedCategories = useMemo(() => {
+    if (!hasRestrictions) return ['generator', 'equipment', 'tractor'];
+    
+    const categoryNames = userCategories.map(c => c.name.toLowerCase());
+    const allowed: string[] = [];
+    
+    categoryNames.forEach(name => {
+      if (name.includes('generator') || name.includes('مولد')) allowed.push('generator');
+      if (name.includes('equipment') || name.includes('معد')) allowed.push('equipment');
+      if (name.includes('tractor') || name.includes('حراث')) allowed.push('tractor');
+    });
+    
+    return [...new Set(allowed)];
+  }, [userCategories, hasRestrictions]);
+
+  // Filter datasheets by user's categories
+  const accessibleDatasheets = useMemo(() => {
+    if (!hasRestrictions) return datasheets;
+    const categoryIds = getCategoryIds();
+    // Filter by linked inventory item's category OR by the datasheet's own category if no item linked
+    return datasheets.filter(d => {
+      if (d.inventory_items?.category_id) {
+        return categoryIds.includes(d.inventory_items.category_id);
+      }
+      // If no inventory item linked, filter by datasheet category matching allowed categories
+      return allowedCategories.includes(d.category);
+    });
+  }, [datasheets, hasRestrictions, getCategoryIds, allowedCategories]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -165,7 +198,13 @@ const TechnicalDatasheets = () => {
     URL.revokeObjectURL(url);
   };
 
-  const filteredDatasheets = datasheets.filter(d => d.category === selectedCategory);
+  // Set default category based on allowed categories
+  const defaultCategory = useMemo(() => {
+    if (allowedCategories.includes(selectedCategory)) return selectedCategory;
+    return (allowedCategories[0] as DatasheetCategory) || 'generator';
+  }, [allowedCategories, selectedCategory]);
+
+  const filteredDatasheets = accessibleDatasheets.filter(d => d.category === defaultCategory);
 
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return 'N/A';
@@ -194,14 +233,20 @@ const TechnicalDatasheets = () => {
             <CardTitle>Catalog Library</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as DatasheetCategory)}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="generator">Generators</TabsTrigger>
-                <TabsTrigger value="equipment">Equipment</TabsTrigger>
-                <TabsTrigger value="tractor">Tractors</TabsTrigger>
+            <Tabs value={defaultCategory} onValueChange={(v) => setSelectedCategory(v as DatasheetCategory)}>
+              <TabsList className={`grid w-full grid-cols-${allowedCategories.length || 3}`}>
+                {(!hasRestrictions || allowedCategories.includes('generator')) && (
+                  <TabsTrigger value="generator">Generators</TabsTrigger>
+                )}
+                {(!hasRestrictions || allowedCategories.includes('equipment')) && (
+                  <TabsTrigger value="equipment">Equipment</TabsTrigger>
+                )}
+                {(!hasRestrictions || allowedCategories.includes('tractor')) && (
+                  <TabsTrigger value="tractor">Tractors</TabsTrigger>
+                )}
               </TabsList>
 
-              <TabsContent value={selectedCategory} className="mt-6">
+              <TabsContent value={defaultCategory} className="mt-6">
                 {isLoading ? (
                   <div className="text-center py-8 text-muted-foreground">Loading...</div>
                 ) : filteredDatasheets.length === 0 ? (

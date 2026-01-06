@@ -8,6 +8,7 @@ import { AddCategoryModal } from "@/components/modals/AddCategoryModal";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUserCategories } from "@/hooks/useUserCategories";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Category {
@@ -25,6 +26,7 @@ const Categories = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { isAdmin } = useUserRole();
+  const { userCategories, hasRestrictions, loading: categoriesLoading, getCategoryIds } = useUserCategories();
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -32,12 +34,21 @@ const Categories = () => {
     if (error) {
       toast({ title: 'Error', description: `Failed to load categories: ${error.message}`, variant: 'destructive' });
     } else {
-      setCategories(data || []);
+      // Filter by user's accessible categories
+      const categoryIds = getCategoryIds();
+      const filteredData = hasRestrictions && categoryIds.length > 0
+        ? (data || []).filter(cat => categoryIds.includes(cat.id))
+        : data || [];
+      setCategories(filteredData);
     }
     setLoading(false);
   };
 
-  useEffect(() => { fetchCategories(); }, []);
+  useEffect(() => { 
+    if (!categoriesLoading) {
+      fetchCategories(); 
+    }
+  }, [categoriesLoading, hasRestrictions]);
 
   const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
     try {
