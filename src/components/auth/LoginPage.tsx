@@ -121,7 +121,7 @@ export const LoginPage = () => {
         <Card className="border-primary/20 shadow-xl">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Trade Flow System
+              Tehama Sales System
             </CardTitle>
             <CardDescription>
               Access your account or create a new one
@@ -222,9 +222,14 @@ export const LoginPage = () => {
         </Card>
 
         {/* Footer */}
-        <div className="text-center text-xs text-muted-foreground">
-          <p>Tehama Trading Company</p>
-          <p>Official Dealer for CAT Gensets & Heavy Equipment | Massey Ferguson Agricultural Tractors</p>
+        <div className="text-center text-xs text-muted-foreground space-y-2">
+          <div>
+            <p>Tehama Trading Company</p>
+            <p>Official Dealer for CAT Gensets & Heavy Equipment | Massey Ferguson Agricultural Tractors</p>
+          </div>
+          <div className="pt-2 border-t border-border/50">
+            <p className="text-muted-foreground/70">Dev-Art for Technology Solutions</p>
+          </div>
         </div>
       </div>
     </div>

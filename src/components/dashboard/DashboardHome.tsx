@@ -28,7 +28,7 @@ export const DashboardHome = () => {
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-primary/10 via-background to-accent/10 rounded-lg p-6">
         <h1 className="text-3xl font-bold text-foreground mb-2">
-          Welcome to Trade Flow System
+          Welcome to Tehama Sales System
         </h1>
         <p className="text-muted-foreground">
           Managing CAT gensets, heavy equipment, and Massey Ferguson agricultural tractors
