@@ -13,20 +13,20 @@ interface HeaderProps {
 // Category-specific configurations
 const categoryConfig: Record<string, { title: string; subtitle: string; icon: React.ComponentType<any>; color: string }> = {
   'مولدات كهربائية': { 
-    title: 'نظام إدارة المولدات الكهربائية', 
-    subtitle: 'Electric Generators Management',
+    title: 'Electric Generators Sales', 
+    subtitle: 'Generators Management System',
     icon: Zap,
     color: 'text-yellow-500'
   },
   'معدات ثقيلة': { 
-    title: 'نظام إدارة المعدات الثقيلة', 
-    subtitle: 'Heavy Equipment Management',
+    title: 'Heavy Equipment Sales', 
+    subtitle: 'Equipment Management System',
     icon: Truck,
     color: 'text-orange-500'
   },
   'حراثات زراعية': { 
-    title: 'نظام إدارة الحراثات الزراعية', 
-    subtitle: 'Agricultural Tractors Management',
+    title: 'Agricultural Tractors Sales', 
+    subtitle: 'Tractors Management System',
     icon: Tractor,
     color: 'text-green-500'
   },
@@ -51,7 +51,7 @@ export const Header = ({ onMenuClick }: HeaderProps) => {
   const getHeaderInfo = () => {
     if (isAdmin || !hasRestrictions || userCategories.length !== 1) {
       return {
-        title: 'Tehama Trading - Trade Flow',
+        title: 'Tehama Sales System',
         subtitle: 'CAT & Massey Ferguson Dealer',
         icon: null,
         color: ''
@@ -60,7 +60,7 @@ export const Header = ({ onMenuClick }: HeaderProps) => {
 
     const categoryName = userCategories[0]?.name || '';
     return categoryConfig[categoryName] || {
-      title: 'Tehama Trading - Trade Flow',
+      title: 'Tehama Sales System',
       subtitle: 'CAT & Massey Ferguson Dealer',
       icon: null,
       color: ''

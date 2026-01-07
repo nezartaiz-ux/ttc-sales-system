@@ -21,21 +21,22 @@ import {
   Tractor
 } from "lucide-react";
 import { useUserCategories } from "@/hooks/useUserCategories";
+import { useUserPermissions, SystemModule } from "@/hooks/useUserPermissions";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: Home },
-  { name: "Customers", href: "/customers", icon: Users },
-  { name: "Suppliers", href: "/suppliers", icon: Truck },
-  { name: "Inventory", href: "/inventory", icon: Package },
-  { name: "Categories", href: "/categories", icon: FolderOpen },
-  { name: "Quotations", href: "/quotations", icon: FileText },
-  { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart },
-  { name: "Sales Invoices", href: "/sales-invoices", icon: Receipt },
-  { name: "Delivery Notes", href: "/delivery-notes", icon: ClipboardList },
-  { name: "Technical Datasheets", href: "/technical-datasheets", icon: BookOpen },
-  { name: "Image Gallery", href: "/image-gallery", icon: Image },
-  { name: "Reports", href: "/reports", icon: BarChart3 },
-  { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Dashboard", href: "/", icon: Home, module: null },
+  { name: "Customers", href: "/customers", icon: Users, module: 'customers' },
+  { name: "Suppliers", href: "/suppliers", icon: Truck, module: 'suppliers' },
+  { name: "Stock", href: "/inventory", icon: Package, module: 'inventory' },
+  { name: "Categories", href: "/categories", icon: FolderOpen, module: 'categories' },
+  { name: "Quotations", href: "/quotations", icon: FileText, module: 'quotations' },
+  { name: "Purchase Orders", href: "/purchase-orders", icon: ShoppingCart, module: 'purchase_orders' },
+  { name: "Sales Invoices", href: "/sales-invoices", icon: Receipt, module: 'sales_invoices' },
+  { name: "Delivery Notes", href: "/delivery-notes", icon: ClipboardList, module: 'delivery_notes' },
+  { name: "Technical Datasheets", href: "/technical-datasheets", icon: BookOpen, module: null },
+  { name: "Image Gallery", href: "/image-gallery", icon: Image, module: 'image_gallery' },
+  { name: "Reports", href: "/reports", icon: BarChart3, module: 'reports' },
+  { name: "Settings", href: "/settings", icon: Settings, module: 'settings' },
 ];
 
 // Category-specific configurations
@@ -65,6 +66,7 @@ interface SidebarProps {
 export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
   const location = useLocation();
   const { userCategories, hasRestrictions, isAdmin, loading } = useUserCategories();
+  const { canView, loading: permissionsLoading } = useUserPermissions();
 
   // Get category display info
   const getCategoryInfo = () => {
@@ -84,7 +86,7 @@ export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
 
     // Multiple categories
     return {
-      name: `${userCategories.length} أقسام`,
+      name: `${userCategories.length} Categories`,
       icon: Package,
       color: 'text-primary',
       bgColor: 'bg-primary/10'
@@ -92,6 +94,16 @@ export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
   };
 
   const categoryInfo = getCategoryInfo();
+
+  // Filter navigation based on user permissions
+  const filteredNavigation = navigation.filter(item => {
+    // Always show Dashboard, Technical Datasheets (no module)
+    if (!item.module) return true;
+    // Admin sees everything
+    if (isAdmin) return true;
+    // Check permission for the module
+    return canView(item.module as SystemModule);
+  });
 
   return (
     <>
@@ -112,14 +124,14 @@ export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
         <div className="flex flex-col h-full">
           {/* Logo Section */}
           <div className="p-6 border-b border-border">
-            <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                   <Package className="w-5 h-5 text-primary-foreground" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-foreground">Tehama</h2>
-                  <p className="text-xs text-muted-foreground">Trade Flow</p>
+                  <p className="text-xs text-muted-foreground">Sales System</p>
                 </div>
               </div>
               {/* Mobile close button */}
@@ -148,7 +160,7 @@ export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navigation.map((item) => {
+            {filteredNavigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
                 <Button
@@ -178,7 +190,7 @@ export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
               <p>Tehama Trading Co.</p>
               {isAdmin && (
                 <Badge variant="secondary" className="mt-2">
-                  مدير النظام
+                  System Admin
                 </Badge>
               )}
             </div>
