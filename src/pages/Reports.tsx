@@ -176,10 +176,12 @@ const Reports = () => {
     fetchSummaryData();
   }, [hasRestrictions]);
 
-  // Fetch delivery notes with filters
+  // Fetch delivery notes with filters and category restrictions
   const fetchDeliveryNotes = async () => {
     setLoadingDeliveryNotes(true);
     try {
+      const categoryIds = getCategoryIds();
+
       let query = supabase
         .from('delivery_notes')
         .select(`
@@ -204,7 +206,31 @@ const Reports = () => {
       
       const { data, error } = await query;
       if (error) throw error;
-      setDeliveryNotes(data || []);
+
+      // Filter by category if user has restrictions
+      let filteredData = data || [];
+      if (hasRestrictions && categoryIds.length > 0) {
+        // Get inventory items in user's categories
+        const { data: inventoryItems } = await supabase
+          .from('inventory_items')
+          .select('id')
+          .in('category_id', categoryIds);
+        const validItemIds = inventoryItems?.map(i => i.id) || [];
+
+        // Get delivery note items
+        const { data: dnItems } = await supabase
+          .from('delivery_note_items')
+          .select('delivery_note_id, inventory_item_id');
+
+        const validDNIds = new Set(
+          dnItems?.filter(dni => validItemIds.includes(dni.inventory_item_id || ''))
+            .map(dni => dni.delivery_note_id) || []
+        );
+
+        filteredData = filteredData.filter(dn => validDNIds.has(dn.id));
+      }
+
+      setDeliveryNotes(filteredData);
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
@@ -233,21 +259,63 @@ const Reports = () => {
   const handleExportAll = async () => {
     setIsExporting(true);
     try {
-      const [customers, suppliers, inventory, quotations, pos, invoices] = await Promise.all([
+      const categoryIds = getCategoryIds();
+      
+      // Get filtered inventory items first
+      let inventoryQuery = supabase.from('inventory_items').select('*');
+      if (hasRestrictions && categoryIds.length > 0) {
+        inventoryQuery = inventoryQuery.in('category_id', categoryIds);
+      }
+      const { data: inventoryData } = await inventoryQuery;
+      const validItemIds = inventoryData?.map(i => i.id) || [];
+
+      const [customers, suppliers, quotations, quotationItems, pos, poItems, invoices, invoiceItems] = await Promise.all([
         supabase.from('customers').select('*'),
         supabase.from('suppliers').select('*'),
-        supabase.from('inventory_items').select('*'),
         supabase.from('quotations').select('*'),
+        supabase.from('quotation_items').select('quotation_id, inventory_item_id'),
         supabase.from('purchase_orders').select('*'),
-        supabase.from('sales_invoices').select('*')
+        supabase.from('purchase_order_items').select('purchase_order_id, inventory_item_id'),
+        supabase.from('sales_invoices').select('*'),
+        supabase.from('sales_invoice_items').select('sales_invoice_id, inventory_item_id')
       ]);
+
+      // Filter quotations by category
+      let filteredQuotations = quotations.data || [];
+      if (hasRestrictions && categoryIds.length > 0) {
+        const validQuotationIds = new Set(
+          quotationItems.data?.filter(qi => validItemIds.includes(qi.inventory_item_id))
+            .map(qi => qi.quotation_id) || []
+        );
+        filteredQuotations = filteredQuotations.filter(q => validQuotationIds.has(q.id));
+      }
+
+      // Filter purchase orders by category
+      let filteredPOs = pos.data || [];
+      if (hasRestrictions && categoryIds.length > 0) {
+        const validPOIds = new Set(
+          poItems.data?.filter(pi => validItemIds.includes(pi.inventory_item_id))
+            .map(pi => pi.purchase_order_id) || []
+        );
+        filteredPOs = filteredPOs.filter(p => validPOIds.has(p.id));
+      }
+
+      // Filter invoices by category
+      let filteredInvoices = invoices.data || [];
+      if (hasRestrictions && categoryIds.length > 0) {
+        const validInvoiceIds = new Set(
+          invoiceItems.data?.filter(ii => validItemIds.includes(ii.inventory_item_id))
+            .map(ii => ii.sales_invoice_id) || []
+        );
+        filteredInvoices = filteredInvoices.filter(inv => validInvoiceIds.has(inv.id));
+      }
 
       if (customers.data) exportToCSV(customers.data, `customers-${new Date().toISOString().split('T')[0]}.csv`);
       if (suppliers.data) exportToCSV(suppliers.data, `suppliers-${new Date().toISOString().split('T')[0]}.csv`);
-      if (inventory.data) exportToCSV(inventory.data, `inventory-${new Date().toISOString().split('T')[0]}.csv`);
-      if (quotations.data) exportToCSV(quotations.data, `quotations-${new Date().toISOString().split('T')[0]}.csv`);
-      if (pos.data) exportToCSV(pos.data, `purchase-orders-${new Date().toISOString().split('T')[0]}.csv`);
-      if (invoices.data) exportToCSV(invoices.data, `sales-invoices-${new Date().toISOString().split('T')[0]}.csv`);
+      if (inventoryData && inventoryData.length > 0) exportToCSV(inventoryData, `inventory-${new Date().toISOString().split('T')[0]}.csv`);
+      if (filteredQuotations.length > 0) exportToCSV(filteredQuotations, `quotations-${new Date().toISOString().split('T')[0]}.csv`);
+      if (filteredPOs.length > 0) exportToCSV(filteredPOs, `purchase-orders-${new Date().toISOString().split('T')[0]}.csv`);
+      if (filteredInvoices.length > 0) exportToCSV(filteredInvoices, `sales-invoices-${new Date().toISOString().split('T')[0]}.csv`);
 
       toast({ title: 'Success', description: 'All reports exported successfully' });
     } catch (error) {
@@ -261,14 +329,35 @@ const Reports = () => {
     try {
       let data, filename;
       const date = new Date().toISOString().split('T')[0];
+      const categoryIds = getCategoryIds();
+
+      // Get filtered inventory items for category restrictions
+      let inventoryQuery = supabase.from('inventory_items').select('id, category_id');
+      if (hasRestrictions && categoryIds.length > 0) {
+        inventoryQuery = inventoryQuery.in('category_id', categoryIds);
+      }
+      const { data: inventoryItems } = await inventoryQuery;
+      const validItemIds = inventoryItems?.map(i => i.id) || [];
 
       switch (reportType) {
         case 'monthly-sales':
           const { data: salesData } = await supabase
             .from('sales_invoices')
-            .select('invoice_number, customer_id, grand_total, created_at, status')
+            .select('id, invoice_number, customer_id, grand_total, created_at, status')
             .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
-          data = salesData;
+          
+          let filteredSales = salesData || [];
+          if (hasRestrictions && categoryIds.length > 0) {
+            const { data: invoiceItems } = await supabase
+              .from('sales_invoice_items')
+              .select('sales_invoice_id, inventory_item_id');
+            const validInvoiceIds = new Set(
+              invoiceItems?.filter(ii => validItemIds.includes(ii.inventory_item_id))
+                .map(ii => ii.sales_invoice_id) || []
+            );
+            filteredSales = filteredSales.filter(inv => validInvoiceIds.has(inv.id));
+          }
+          data = filteredSales;
           filename = `monthly-sales-${date}.csv`;
           break;
         case 'customer-performance':
@@ -279,16 +368,24 @@ const Reports = () => {
           filename = `customer-performance-${date}.csv`;
           break;
         case 'category-analysis':
-          const { data: categoryData } = await supabase
+          let categoryQuery = supabase
             .from('product_categories')
             .select('name, description, is_active, created_at');
+          if (hasRestrictions && categoryIds.length > 0) {
+            categoryQuery = categoryQuery.in('id', categoryIds);
+          }
+          const { data: categoryData } = await categoryQuery;
           data = categoryData;
           filename = `category-analysis-${date}.csv`;
           break;
         case 'stock-levels':
-          const { data: stockData } = await supabase
+          let stockQuery = supabase
             .from('inventory_items')
             .select('name, quantity, min_stock_level, unit_price, selling_price, location');
+          if (hasRestrictions && categoryIds.length > 0) {
+            stockQuery = stockQuery.in('category_id', categoryIds);
+          }
+          const { data: stockData } = await stockQuery;
           data = stockData;
           filename = `stock-levels-${date}.csv`;
           break;
@@ -302,8 +399,20 @@ const Reports = () => {
         case 'po-analysis':
           const { data: poData } = await supabase
             .from('purchase_orders')
-            .select('order_number, supplier_id, grand_total, status, expected_delivery_date, created_at');
-          data = poData;
+            .select('id, order_number, supplier_id, grand_total, status, expected_delivery_date, created_at');
+          
+          let filteredPOs = poData || [];
+          if (hasRestrictions && categoryIds.length > 0) {
+            const { data: poItems } = await supabase
+              .from('purchase_order_items')
+              .select('purchase_order_id, inventory_item_id');
+            const validPOIds = new Set(
+              poItems?.filter(pi => validItemIds.includes(pi.inventory_item_id))
+                .map(pi => pi.purchase_order_id) || []
+            );
+            filteredPOs = filteredPOs.filter(p => validPOIds.has(p.id));
+          }
+          data = filteredPOs;
           filename = `purchase-order-analysis-${date}.csv`;
           break;
         default:
@@ -325,11 +434,21 @@ const Reports = () => {
     if (!customReportType) return;
     setIsExporting(true);
     try {
+      const categoryIds = getCategoryIds();
+
+      // Get filtered inventory items for category restrictions
+      let inventoryQuery = supabase.from('inventory_items').select('id, category_id');
+      if (hasRestrictions && categoryIds.length > 0) {
+        inventoryQuery = inventoryQuery.in('category_id', categoryIds);
+      }
+      const { data: inventoryItems } = await inventoryQuery;
+      const validItemIds = inventoryItems?.map(i => i.id) || [];
+
       // Special handling for detailed quotations report
       if (customReportType === 'quotations') {
         let query = supabase
           .from('quotations')
-          .select('*, customers(name), quotation_items(*, inventory_items(name))')
+          .select('*, customers(name), quotation_items(*, inventory_items(name, category_id))')
           .order('created_at', { ascending: true });
         
         if (startDate && endDate) {
@@ -342,8 +461,19 @@ const Reports = () => {
         
         const { data, error } = await query;
         if (error) throw error;
-        if (data && data.length > 0) {
-          const quotationsData = data.map((q: any) => ({
+        
+        // Filter quotations by category
+        let filteredData = data || [];
+        if (hasRestrictions && categoryIds.length > 0) {
+          filteredData = filteredData.filter((q: any) => 
+            q.quotation_items?.some((item: any) => 
+              categoryIds.includes(item.inventory_items?.category_id)
+            )
+          );
+        }
+        
+        if (filteredData.length > 0) {
+          const quotationsData = filteredData.map((q: any) => ({
             quotation_number: q.quotation_number,
             created_at: q.created_at,
             customer_name: q.customers?.name || 'N/A',
@@ -352,7 +482,9 @@ const Reports = () => {
             discount_value: q.discount_value,
             tax_amount: q.tax_amount,
             grand_total: q.grand_total,
-            items: q.quotation_items?.map((item: any) => ({
+            items: q.quotation_items?.filter((item: any) => 
+              !hasRestrictions || categoryIds.includes(item.inventory_items?.category_id)
+            ).map((item: any) => ({
               name: item.inventory_items?.name || 'N/A',
               quantity: item.quantity,
               unit_price: item.unit_price,
@@ -372,11 +504,15 @@ const Reports = () => {
           toast({ title: 'Info', description: 'No quotations found for the selected period' });
         }
       } else if (customReportType === 'inventory') {
-        // Special handling for detailed inventory report
+        // Special handling for detailed inventory report with category filter
         let query = supabase
           .from('inventory_items')
           .select('*, product_categories(name), suppliers(name)')
           .order('name', { ascending: true });
+        
+        if (hasRestrictions && categoryIds.length > 0) {
+          query = query.in('category_id', categoryIds);
+        }
         
         const { data, error } = await query;
         if (error) throw error;
@@ -393,11 +529,73 @@ const Reports = () => {
         } else {
           toast({ title: 'Info', description: 'No inventory items found' });
         }
+      } else if (customReportType === 'sales') {
+        // Sales invoices with category filter
+        const { data: invoices } = await supabase.from('sales_invoices').select('*');
+        
+        let filteredData = invoices || [];
+        if (hasRestrictions && categoryIds.length > 0) {
+          const { data: invoiceItems } = await supabase
+            .from('sales_invoice_items')
+            .select('sales_invoice_id, inventory_item_id');
+          const validInvoiceIds = new Set(
+            invoiceItems?.filter(ii => validItemIds.includes(ii.inventory_item_id))
+              .map(ii => ii.sales_invoice_id) || []
+          );
+          filteredData = filteredData.filter(inv => validInvoiceIds.has(inv.id));
+        }
+        
+        if (filteredData.length > 0) {
+          const headers = Object.keys(filteredData[0]);
+          const rows = filteredData.map(row => headers.map(h => String((row as any)[h] || '')));
+          
+          generateReportPDF({
+            title: 'SALES Report',
+            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
+            headers,
+            rows,
+            reportType: 'sales',
+            created_by_name: userFullName || 'N/A'
+          });
+          toast({ title: 'Success', description: 'PDF report generated' });
+        } else {
+          toast({ title: 'Info', description: 'No data available for this report' });
+        }
+      } else if (customReportType === 'purchase-orders') {
+        // Purchase orders with category filter
+        const { data: pos } = await supabase.from('purchase_orders').select('*');
+        
+        let filteredData = pos || [];
+        if (hasRestrictions && categoryIds.length > 0) {
+          const { data: poItems } = await supabase
+            .from('purchase_order_items')
+            .select('purchase_order_id, inventory_item_id');
+          const validPOIds = new Set(
+            poItems?.filter(pi => validItemIds.includes(pi.inventory_item_id))
+              .map(pi => pi.purchase_order_id) || []
+          );
+          filteredData = filteredData.filter(p => validPOIds.has(p.id));
+        }
+        
+        if (filteredData.length > 0) {
+          const headers = Object.keys(filteredData[0]);
+          const rows = filteredData.map(row => headers.map(h => String((row as any)[h] || '')));
+          
+          generateReportPDF({
+            title: 'PURCHASE ORDERS Report',
+            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
+            headers,
+            rows,
+            reportType: 'purchase_orders',
+            created_by_name: userFullName || 'N/A'
+          });
+          toast({ title: 'Success', description: 'PDF report generated' });
+        } else {
+          toast({ title: 'Info', description: 'No data available for this report' });
+        }
       } else {
-        // Default report generation for other types
-        const tableName = customReportType === 'sales' ? 'sales_invoices' as const : 
-                          customReportType === 'purchase-orders' ? 'purchase_orders' as const :
-                          customReportType as any;
+        // Default report generation for other types (customers, suppliers)
+        const tableName = customReportType as any;
         const { data, error } = await supabase.from(tableName).select('*');
         
         if (error) throw error;
@@ -406,17 +604,12 @@ const Reports = () => {
           const headers = Object.keys(data[0]);
           const rows = data.map(row => headers.map(h => String((row as any)[h] || '')));
           
-          // Map report types to match serial number formats
-          let reportType = customReportType;
-          if (customReportType === 'sales') reportType = 'sales';
-          else if (customReportType === 'purchase-orders') reportType = 'purchase_orders';
-          
           generateReportPDF({
             title: `${customReportType.toUpperCase()} Report`,
             dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
             headers,
             rows,
-            reportType,
+            reportType: customReportType,
             created_by_name: userFullName || 'N/A'
           });
           toast({ title: 'Success', description: 'PDF report generated' });
@@ -434,13 +627,73 @@ const Reports = () => {
     if (!customReportType) return;
     setIsExporting(true);
     try {
-      const tableName = customReportType === 'sales' ? 'sales_invoices' as const : 
-                        customReportType === 'purchase-orders' ? 'purchase_orders' as const :
-                        customReportType === 'inventory' ? 'inventory_items' as const :
-                        customReportType as any;
-      const { data, error } = await supabase.from(tableName).select('*');
-      if (error) throw error;
-      if (data && data.length > 0) {
+      const categoryIds = getCategoryIds();
+
+      // Get filtered inventory items for category restrictions
+      let inventoryQuery = supabase.from('inventory_items').select('id, category_id');
+      if (hasRestrictions && categoryIds.length > 0) {
+        inventoryQuery = inventoryQuery.in('category_id', categoryIds);
+      }
+      const { data: inventoryItems } = await inventoryQuery;
+      const validItemIds = inventoryItems?.map(i => i.id) || [];
+
+      let data: any[] = [];
+      
+      if (customReportType === 'inventory') {
+        let query = supabase.from('inventory_items').select('*');
+        if (hasRestrictions && categoryIds.length > 0) {
+          query = query.in('category_id', categoryIds);
+        }
+        const { data: invData, error } = await query;
+        if (error) throw error;
+        data = invData || [];
+      } else if (customReportType === 'quotations') {
+        const { data: quotations } = await supabase.from('quotations').select('*');
+        data = quotations || [];
+        if (hasRestrictions && categoryIds.length > 0) {
+          const { data: quotationItems } = await supabase
+            .from('quotation_items')
+            .select('quotation_id, inventory_item_id');
+          const validQuotationIds = new Set(
+            quotationItems?.filter(qi => validItemIds.includes(qi.inventory_item_id))
+              .map(qi => qi.quotation_id) || []
+          );
+          data = data.filter(q => validQuotationIds.has(q.id));
+        }
+      } else if (customReportType === 'sales') {
+        const { data: invoices } = await supabase.from('sales_invoices').select('*');
+        data = invoices || [];
+        if (hasRestrictions && categoryIds.length > 0) {
+          const { data: invoiceItems } = await supabase
+            .from('sales_invoice_items')
+            .select('sales_invoice_id, inventory_item_id');
+          const validInvoiceIds = new Set(
+            invoiceItems?.filter(ii => validItemIds.includes(ii.inventory_item_id))
+              .map(ii => ii.sales_invoice_id) || []
+          );
+          data = data.filter(inv => validInvoiceIds.has(inv.id));
+        }
+      } else if (customReportType === 'purchase-orders') {
+        const { data: pos } = await supabase.from('purchase_orders').select('*');
+        data = pos || [];
+        if (hasRestrictions && categoryIds.length > 0) {
+          const { data: poItems } = await supabase
+            .from('purchase_order_items')
+            .select('purchase_order_id, inventory_item_id');
+          const validPOIds = new Set(
+            poItems?.filter(pi => validItemIds.includes(pi.inventory_item_id))
+              .map(pi => pi.purchase_order_id) || []
+          );
+          data = data.filter(p => validPOIds.has(p.id));
+        }
+      } else {
+        const tableName = customReportType as any;
+        const { data: tableData, error } = await supabase.from(tableName).select('*');
+        if (error) throw error;
+        data = tableData || [];
+      }
+
+      if (data.length > 0) {
         exportToCSV(data, `${customReportType}-${new Date().toISOString().split('T')[0]}.csv`);
         toast({ title: 'Success', description: 'CSV exported' });
       } else {
