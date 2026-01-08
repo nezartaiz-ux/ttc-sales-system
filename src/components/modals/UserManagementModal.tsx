@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,6 +58,8 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
   const [editingCategoriesUserId, setEditingCategoriesUserId] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [savingCategories, setSavingCategories] = useState(false);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [deletingUser, setDeletingUser] = useState(false);
   const { toast } = useToast();
   const { isAdmin } = useUserRole();
 
@@ -428,6 +431,57 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!deleteUserId) return;
+    
+    setDeletingUser(true);
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (currentUser && currentUser.id === deleteUserId) {
+        toast({
+          title: 'Error',
+          description: 'You cannot delete your own account',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Delete user_categories
+      await supabase.from('user_categories').delete().eq('user_id', deleteUserId);
+      
+      // Delete user_roles
+      await supabase.from('user_roles').delete().eq('user_id', deleteUserId);
+      
+      // Delete user_permissions
+      await supabase.from('user_permissions').delete().eq('user_id', deleteUserId);
+      
+      // Delete from profiles
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('user_id', deleteUserId);
+      
+      if (profileError) throw profileError;
+
+      toast({
+        title: 'Success',
+        description: 'User deleted successfully',
+      });
+      
+      setDeleteUserId(null);
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete user',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingUser(false);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -793,6 +847,15 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
                                 >
                                   {user.is_active ? 'Deactivate' : 'Activate'}
                                 </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => setDeleteUserId(user.user_id)}
+                                  title="Delete user"
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </div>
                             )}
                           </TableCell>
@@ -815,6 +878,29 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
           </Button>
         </div>
       </DialogContent>
+
+      <AlertDialog open={!!deleteUserId} onOpenChange={(open) => !open && setDeleteUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this user? This action cannot be undone.
+              The user will lose access to the system and all their role and category assignments will be removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingUser}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              disabled={deletingUser}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingUser ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
