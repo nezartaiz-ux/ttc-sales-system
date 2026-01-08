@@ -71,16 +71,23 @@ serve(async (req: Request) => {
 
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Delete user from auth.users (cascades to profiles due to FK)
+    // Try to delete user from auth.users
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(targetUserId);
 
-    if (deleteError) {
+    // If user not found in auth, still clean up related data
+    if (deleteError && deleteError.message !== "User not found") {
       console.error("User deletion error:", deleteError);
       return new Response(
         JSON.stringify({ error: deleteError.message }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+
+    // Clean up any orphaned data in public tables (in case auth user was already deleted)
+    await adminClient.from('user_categories').delete().eq('user_id', targetUserId);
+    await adminClient.from('user_roles').delete().eq('user_id', targetUserId);
+    await adminClient.from('user_permissions').delete().eq('user_id', targetUserId);
+    await adminClient.from('profiles').delete().eq('user_id', targetUserId);
 
     return new Response(
       JSON.stringify({ success: true, message: "User deleted successfully" }),
