@@ -444,25 +444,22 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
           description: 'You cannot delete your own account',
           variant: 'destructive',
         });
+        setDeletingUser(false);
         return;
       }
 
-      // Delete user_categories
-      await supabase.from('user_categories').delete().eq('user_id', deleteUserId);
-      
-      // Delete user_roles
-      await supabase.from('user_roles').delete().eq('user_id', deleteUserId);
-      
-      // Delete user_permissions
-      await supabase.from('user_permissions').delete().eq('user_id', deleteUserId);
-      
-      // Delete from profiles
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('user_id', deleteUserId);
-      
-      if (profileError) throw profileError;
+      // Use edge function to delete user from auth.users
+      const response = await supabase.functions.invoke('admin-delete-user', {
+        body: { targetUserId: deleteUserId },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to delete user');
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
 
       toast({
         title: 'Success',
