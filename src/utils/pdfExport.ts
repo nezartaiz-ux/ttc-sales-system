@@ -88,6 +88,19 @@ const amountToWords = (amount: number): string => {
   return result;
 };
 
+// Helper function to format notes for print with bold section headers
+const formatNotesForPrint = (notes: string): string => {
+  return notes.split('\n').map(line => {
+    const trimmed = line.trim();
+    const isHeader = (trimmed.endsWith(':') && trimmed.length < 50) || 
+                     (trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 60);
+    if (isHeader) {
+      return `<div class="section-header">${trimmed}</div>`;
+    }
+    return trimmed ? `<div>${trimmed}</div>` : '<br/>';
+  }).join('');
+};
+
 // Helper function to add footer with company info
 const addPDFFooter = (doc: jsPDF) => {
   const pageHeight = doc.internal.pageSize.height;
@@ -132,11 +145,13 @@ interface QuotationData {
   quotation_number: string;
   customer_name: string;
   validity_period: string;
+  quotation_date?: string;
   total_amount: number;
   tax_amount: number;
   grand_total: number;
   items: Array<{
     name: string;
+    description?: string;
     quantity: number;
     unit_price: number;
     total_price: number;
@@ -203,49 +218,46 @@ export const generateQuotationPDF = (data: QuotationData) => {
   doc.setFont('helvetica', 'bold');
   doc.text('QUOTATION', 105, 32, { align: 'center' });
   
-  // Quotation details - compact two-column layout
+  // Quotation details - aligned layout
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
   let yPos = 40;
-  const col1X = 14;
-  const col2X = pageWidth / 2 + 5;
+  const labelX = 14;
+  const valueX = 50; // Aligned value column
+  const rightLabelX = pageWidth - 50;
   
+  // Left side - aligned labels and values
   doc.setFont('helvetica', 'bold');
-  doc.text('Quotation #:', col1X, yPos);
+  doc.text('Quotation #:', labelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.quotation_number, col1X + 25, yPos);
+  doc.text(data.quotation_number, valueX, yPos);
   
+  // Right side - Quotation Date aligned to right
   doc.setFont('helvetica', 'bold');
-  doc.text('Valid Until:', col2X, yPos);
+  doc.text('Quotation Date:', rightLabelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.validity_period, col2X + 22, yPos);
+  const dateText = data.quotation_date || data.validity_period;
+  doc.text(dateText, pageWidth - 14, yPos, { align: 'right' });
   
-  yPos += 5;
+  yPos += 4;
   doc.setFont('helvetica', 'bold');
-  doc.text('Customer:', col1X, yPos);
+  doc.text('Customer:', labelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.customer_name, col1X + 22, yPos);
-  
-  if (data.customs_duty_status) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Customs:', col2X, yPos);
-    doc.setFont('helvetica', 'normal');
-    doc.text(data.customs_duty_status, col2X + 18, yPos);
-  }
+  doc.text(data.customer_name, valueX, yPos);
   
   if (data.delivery_terms) {
-    yPos += 5;
+    yPos += 4;
     doc.setFont('helvetica', 'bold');
-    doc.text('Delivery Terms:', col1X, yPos);
+    doc.text('Delivery Terms:', labelX, yPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(data.delivery_terms, col1X + 30, yPos);
+    doc.text(data.delivery_terms, valueX, yPos);
   }
+  
   if (data.delivery_details) {
-    yPos += 5;
+    yPos += 4;
     doc.setFont('helvetica', 'bold');
-    doc.text('Delivery Details:', col1X, yPos);
+    doc.text('Delivery Details:', labelX, yPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(data.delivery_details, col1X + 32, yPos);
+    doc.text(data.delivery_details, valueX, yPos);
   }
   
   // Items table - Calculate amounts
@@ -274,24 +286,38 @@ export const generateQuotationPDF = (data: QuotationData) => {
     ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
   );
   
-  autoTable(doc, {
-    startY: yPos + 5,
-    head: [['Item', 'Qty', 'Unit Price', 'Total']],
-    body: data.items.map(item => [
+  // Build table body with item descriptions
+  const tableBody: any[] = [];
+  data.items.forEach(item => {
+    // Item row
+    tableBody.push([
       item.name,
       item.quantity.toLocaleString(),
       formatCurrency(item.unit_price),
       formatCurrency(item.total_price)
-    ]),
+    ]);
+    // Description row if available
+    if (item.description) {
+      tableBody.push([
+        { content: item.description, colSpan: 4, styles: { fontSize: 7, textColor: [80, 80, 80], cellPadding: { top: 0, bottom: 2, left: 4, right: 2 } } }
+      ]);
+    }
+  });
+
+  autoTable(doc, {
+    startY: yPos + 4,
+    head: [['Item', 'Qty', 'Unit Price', 'Total']],
+    body: tableBody,
     foot: footRows,
     showFoot: 'lastPage',
-    styles: { fontSize: 8, cellPadding: 2 },
+    styles: { fontSize: 8, cellPadding: 1.5 },
     headStyles: { fillColor: [60, 60, 60], textColor: [255, 255, 255], fontStyle: 'bold' },
+    footStyles: { cellPadding: 1 },
     margin: { bottom: marginBottom }
   });
   
   // Add amount in words
-  let currentY = (doc as any).lastAutoTable.finalY + 6;
+  let currentY = (doc as any).lastAutoTable.finalY + 4;
   if (currentY > pageHeight - marginBottom - 15) {
     doc.addPage();
     addPDFHeader(doc, true);
@@ -301,27 +327,45 @@ export const generateQuotationPDF = (data: QuotationData) => {
   doc.setFont('helvetica', 'bold');
   doc.text('Amount in Words:', 14, currentY);
   doc.setFont('helvetica', 'normal');
-  doc.text(amountToWords(data.grand_total), 14, currentY + 4);
+  doc.text(amountToWords(data.grand_total), 14, currentY + 3);
   
-  // Notes with proper multi-line handling
+  // Notes with proper multi-line handling - section headers bold and at start of line
   if (data.notes) {
-    let notesY = currentY + 10;
+    let notesY = currentY + 8;
     doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
     
-    // Split text into lines that fit the page width
     const maxWidth = pageWidth - 28;
-    const lines = doc.splitTextToSize(data.notes, maxWidth);
+    const noteLines = data.notes.split('\n');
     
-    // Add lines with page break handling
-    lines.forEach((line: string) => {
+    noteLines.forEach((paragraph: string) => {
       if (notesY > pageHeight - marginBottom) {
         doc.addPage();
         addPDFHeader(doc, true);
         notesY = 35;
       }
-      doc.text(line, 14, notesY);
-      notesY += 4;
+      
+      // Check if line is a section header (ends with ':' or is all caps or short)
+      const trimmedLine = paragraph.trim();
+      const isHeader = (trimmedLine.endsWith(':') && trimmedLine.length < 50) || 
+                       (trimmedLine === trimmedLine.toUpperCase() && trimmedLine.length > 3 && trimmedLine.length < 60);
+      
+      if (isHeader) {
+        doc.setFont('helvetica', 'bold');
+        doc.text(trimmedLine, 14, notesY);
+        doc.setFont('helvetica', 'normal');
+        notesY += 3.5;
+      } else if (trimmedLine) {
+        const lines = doc.splitTextToSize(trimmedLine, maxWidth);
+        lines.forEach((line: string) => {
+          if (notesY > pageHeight - marginBottom) {
+            doc.addPage();
+            addPDFHeader(doc, true);
+            notesY = 35;
+          }
+          doc.text(line, 14, notesY);
+          notesY += 3;
+        });
+      }
     });
   }
   
@@ -479,25 +523,30 @@ export const printQuotation = (data: QuotationData) => {
       <head>
         <title>Quotation ${data.quotation_number}</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px; }
+          body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.3; }
+          .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
           .company-info { text-align: left; }
-          .company-info h3 { margin: 0 0 5px 0; font-size: 16px; }
-          .company-info p { margin: 2px 0; font-size: 11px; color: #555; }
+          .company-info h3 { margin: 0 0 3px 0; font-size: 16px; }
+          .company-info p { margin: 1px 0; font-size: 11px; color: #555; }
           .logo { width: 120px; height: auto; }
-          h1 { text-align: center; margin: 20px 0; }
-          .header { margin-bottom: 20px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          h1 { text-align: center; margin: 15px 0; }
+          .header { margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+          .header p { margin: 2px 0; font-size: 11px; }
+          .header .right { text-align: right; }
+          table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+          th, td { border: 1px solid #ddd; padding: 5px; text-align: left; font-size: 11px; }
           th { background-color: #f2f2f2; }
-          .totals { text-align: right; margin-top: 20px; }
-          .notes { margin-top: 30px; white-space: pre-wrap; font-size: 11px; line-height: 1.5; }
-          .signature-section { margin-top: 60px; text-align: right; padding-right: 30px; }
-          .signature-section .prepared-by { margin-bottom: 5px; }
-          .signature-section .name { font-weight: bold; margin-bottom: 30px; }
-          .signature-section .signature-line { width: 200px; border-top: 1px solid #333; margin-left: auto; margin-top: 30px; padding-top: 5px; }
-          .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 20px; border-top: 1px solid #ddd; font-size: 10px; color: #555; background: white; }
-          @page { margin-bottom: 80px; }
+          .item-desc { font-size: 10px; color: #555; padding-top: 0 !important; border-top: none !important; }
+          .totals { text-align: right; margin-top: 15px; font-size: 11px; }
+          .totals p { margin: 2px 0; }
+          .notes { margin-top: 20px; white-space: pre-wrap; font-size: 10px; line-height: 1.4; }
+          .notes .section-header { font-weight: bold; margin-top: 8px; }
+          .signature-section { margin-top: 40px; text-align: right; padding-right: 30px; }
+          .signature-section .prepared-by { margin-bottom: 3px; font-size: 11px; }
+          .signature-section .name { font-weight: bold; margin-bottom: 20px; font-size: 11px; }
+          .signature-section .signature-line { width: 200px; border-top: 1px solid #333; margin-left: auto; margin-top: 20px; padding-top: 3px; font-size: 10px; }
+          .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 15px; border-top: 1px solid #ddd; font-size: 9px; color: #555; background: white; }
+          @page { margin-bottom: 60px; }
         </style>
       </head>
       <body>
@@ -510,12 +559,15 @@ export const printQuotation = (data: QuotationData) => {
         </div>
         <h1>QUOTATION</h1>
         <div class="header">
-          <p><strong>Quotation #:</strong> ${data.quotation_number}</p>
-          <p><strong>Customer:</strong> ${data.customer_name}</p>
-          <p><strong>Valid Until:</strong> ${data.validity_period}</p>
-          ${data.customs_duty_status ? `<p><strong>Customs & Duty Status:</strong> ${data.customs_duty_status}</p>` : ''}
-          ${data.delivery_terms ? `<p><strong>Delivery Terms:</strong> ${data.delivery_terms}</p>` : ''}
-          ${data.delivery_details ? `<p><strong>Delivery Details:</strong> ${data.delivery_details}</p>` : ''}
+          <div>
+            <p><strong>Quotation #:</strong> ${data.quotation_number}</p>
+            <p><strong>Customer:</strong> ${data.customer_name}</p>
+            ${data.delivery_terms ? `<p><strong>Delivery Terms:</strong> ${data.delivery_terms}</p>` : ''}
+            ${data.delivery_details ? `<p><strong>Delivery Details:</strong> ${data.delivery_details}</p>` : ''}
+          </div>
+          <div class="right">
+            <p><strong>Quotation Date:</strong> ${data.quotation_date || data.validity_period}</p>
+          </div>
         </div>
         <table>
           <thead>
@@ -529,7 +581,7 @@ export const printQuotation = (data: QuotationData) => {
           <tbody>
             ${data.items.map(item => `
               <tr>
-                <td>${item.name}</td>
+                <td>${item.name}${item.description ? `<div class="item-desc">${item.description}</div>` : ''}</td>
                 <td>${item.quantity.toLocaleString()}</td>
                 <td>$${item.unit_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td>$${item.total_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -546,10 +598,10 @@ export const printQuotation = (data: QuotationData) => {
           <p><strong>Tax:</strong> $${data.tax_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <p><strong>Grand Total:</strong> $${data.grand_total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
-        <div style="margin-top: 20px;">
-          <p><strong>Amount in Words:</strong> ${amountToWords(data.grand_total)}</p>
+        <div style="margin-top: 12px;">
+          <p style="font-size: 11px;"><strong>Amount in Words:</strong> ${amountToWords(data.grand_total)}</p>
         </div>
-        ${data.notes ? `<div class="notes">${data.notes.replace(/\n/g, '<br/>')}</div>` : ''}
+        ${data.notes ? `<div class="notes">${formatNotesForPrint(data.notes)}</div>` : ''}
         
         <div class="signature-section">
           <p class="prepared-by">Prepared by:</p>

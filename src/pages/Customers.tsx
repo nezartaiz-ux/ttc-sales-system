@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Users, Pencil, Trash2 } from "lucide-react";
 import { AddCustomerModal } from "@/components/modals/AddCustomerModal";
+import { EditCustomerModal } from "@/components/modals/EditCustomerModal";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -21,6 +22,8 @@ interface Customer {
 
 const Customers = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -29,6 +32,11 @@ const Customers = () => {
     vip: 0
   });
   const { toast } = useToast();
+
+  const handleEdit = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setIsEditModalOpen(true);
+  };
 
   const fetchCustomers = async () => {
     try {
@@ -206,7 +214,11 @@ const Customers = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleEdit(customer)}
+                            >
                               <Pencil className="h-4 w-4" />
                             </Button>
                             <Button 
@@ -231,6 +243,13 @@ const Customers = () => {
       <AddCustomerModal
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
+        onSuccess={fetchCustomers}
+      />
+
+      <EditCustomerModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        customer={selectedCustomer}
         onSuccess={fetchCustomers}
       />
     </DashboardLayout>
