@@ -88,11 +88,13 @@ const Quotations = () => {
       quotation_number: quotation.quotation_number,
       customer_name: quotation.customers?.name || 'N/A',
       validity_period: quotation.validity_period || 'N/A',
+      quotation_date: quotation.created_at ? new Date(quotation.created_at).toISOString().split('T')[0] : undefined,
       total_amount: quotation.total_amount || 0,
       tax_amount: quotation.tax_amount || 0,
       grand_total: quotation.grand_total || 0,
       items: quotation.quotation_items?.map((item: any) => ({
         name: item.inventory_items?.name || 'N/A',
+        description: item.inventory_items?.description || '',
         quantity: item.quantity,
         unit_price: item.unit_price,
         total_price: item.total_price
@@ -112,11 +114,13 @@ const Quotations = () => {
       quotation_number: quotation.quotation_number,
       customer_name: quotation.customers?.name || 'N/A',
       validity_period: quotation.validity_period || 'N/A',
+      quotation_date: quotation.created_at ? new Date(quotation.created_at).toISOString().split('T')[0] : undefined,
       total_amount: quotation.total_amount || 0,
       tax_amount: quotation.tax_amount || 0,
       grand_total: quotation.grand_total || 0,
       items: quotation.quotation_items?.map((item: any) => ({
         name: item.inventory_items?.name || 'N/A',
+        description: item.inventory_items?.description || '',
         quantity: item.quantity,
         unit_price: item.unit_price,
         total_price: item.total_price
