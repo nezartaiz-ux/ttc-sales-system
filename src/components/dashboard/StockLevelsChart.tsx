@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { Package } from "lucide-react";
+import { useUserCategories } from "@/hooks/useUserCategories";
 
 interface StockData {
   name: string;
@@ -14,15 +15,27 @@ interface StockData {
 export const StockLevelsChart = () => {
   const [stockData, setStockData] = useState<StockData[]>([]);
   const [loading, setLoading] = useState(true);
+  const { getCategoryIds, hasRestrictions, isAdmin, loading: categoriesLoading } = useUserCategories();
 
   useEffect(() => {
+    if (categoriesLoading) return;
+    
     const fetchStockData = async () => {
-      const { data, error } = await supabase
+      const categoryIds = getCategoryIds();
+      const shouldFilter = hasRestrictions && !isAdmin && categoryIds.length > 0;
+      
+      let query = supabase
         .from("inventory_items")
-        .select("name, quantity, min_stock_level")
+        .select("name, quantity, min_stock_level, category_id")
         .eq("is_active", true)
         .order("quantity", { ascending: true })
         .limit(10);
+
+      if (shouldFilter) {
+        query = query.in("category_id", categoryIds);
+      }
+
+      const { data, error } = await query;
 
       if (!error && data) {
         const formattedData = data.map((item) => ({
@@ -40,7 +53,7 @@ export const StockLevelsChart = () => {
 
     // Real-time subscription
     const channel = supabase
-      .channel("inventory-changes")
+      .channel("stock-changes")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "inventory_items" },
@@ -53,9 +66,9 @@ export const StockLevelsChart = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [categoriesLoading, hasRestrictions, isAdmin]);
 
-  if (loading) {
+  if (loading || categoriesLoading) {
     return (
       <Card>
         <CardHeader>

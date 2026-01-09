@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { Layers } from "lucide-react";
+import { useUserCategories } from "@/hooks/useUserCategories";
 
 interface CategoryData {
   name: string;
@@ -22,22 +23,31 @@ const CATEGORY_COLORS = [
 export const CategoryStockChart = () => {
   const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
   const [loading, setLoading] = useState(true);
+  const { userCategories, hasRestrictions, isAdmin, loading: categoriesLoading } = useUserCategories();
 
   useEffect(() => {
+    if (categoriesLoading) return;
+    
     const fetchCategoryData = async () => {
-      const { data: categories, error: catError } = await supabase
-        .from("product_categories")
-        .select("id, name")
-        .eq("is_active", true);
+      // Use user categories if they have restrictions, otherwise fetch all
+      let categoriesToShow = userCategories;
+      
+      if (isAdmin || !hasRestrictions) {
+        const { data: allCategories, error: catError } = await supabase
+          .from("product_categories")
+          .select("id, name")
+          .eq("is_active", true);
 
-      if (catError || !categories) {
-        setLoading(false);
-        return;
+        if (catError || !allCategories) {
+          setLoading(false);
+          return;
+        }
+        categoriesToShow = allCategories;
       }
 
       const categoryStats: CategoryData[] = [];
 
-      for (const category of categories) {
+      for (const category of categoriesToShow) {
         const { data: items, error: itemsError } = await supabase
           .from("inventory_items")
           .select("quantity, selling_price")
@@ -77,9 +87,9 @@ export const CategoryStockChart = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [categoriesLoading, userCategories, hasRestrictions, isAdmin]);
 
-  if (loading) {
+  if (loading || categoriesLoading) {
     return (
       <Card>
         <CardHeader>
@@ -102,7 +112,7 @@ export const CategoryStockChart = () => {
           <Layers className="h-5 w-5 text-accent" />
           Stock by Category
         </CardTitle>
-        <CardDescription>Inventory value per category</CardDescription>
+        <CardDescription>Stock value per category</CardDescription>
       </CardHeader>
       <CardContent>
         {categoryData.length === 0 ? (

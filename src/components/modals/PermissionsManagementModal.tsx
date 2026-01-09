@@ -33,7 +33,7 @@ interface PermissionsManagementModalProps {
 const MODULES = [
   { id: 'customers', label: 'Customers' },
   { id: 'suppliers', label: 'Suppliers' },
-  { id: 'inventory', label: 'Inventory Items' },
+  { id: 'inventory', label: 'Stock Items' },
   { id: 'categories', label: 'Product Categories' },
   { id: 'quotations', label: 'Quotations' },
   { id: 'purchase_orders', label: 'Purchase Orders' },
