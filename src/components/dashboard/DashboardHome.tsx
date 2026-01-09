@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,11 @@ import { CreateQuotationModal } from "@/components/modals/CreateQuotationModal";
 import { CreatePOModal } from "@/components/modals/CreatePOModal";
 import { AddItemModal } from "@/components/modals/AddItemModal";
 import { AddCustomerModal } from "@/components/modals/AddCustomerModal";
+import { StockLevelsChart } from "./StockLevelsChart";
+import { SalesPerformanceChart } from "./SalesPerformanceChart";
+import { QuotationStatsChart } from "./QuotationStatsChart";
+import { CategoryStockChart } from "./CategoryStockChart";
+import { supabase } from "@/integrations/supabase/client";
 
 export const DashboardHome = () => {
   const navigate = useNavigate();
@@ -23,6 +28,94 @@ export const DashboardHome = () => {
   const [isPOModalOpen, setIsPOModalOpen] = useState(false);
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  
+  // Real-time stats
+  const [stats, setStats] = useState({
+    totalInventory: 0,
+    activeCustomers: 0,
+    pendingQuotations: 0,
+    monthlyRevenue: 0,
+    lowStockItems: 0,
+    expiringQuotations: 0,
+    pendingDeliveries: 0,
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      // Fetch inventory count
+      const { count: inventoryCount } = await supabase
+        .from("inventory_items")
+        .select("*", { count: "exact", head: true })
+        .eq("is_active", true);
+
+      // Fetch customer count
+      const { count: customerCount } = await supabase
+        .from("customers")
+        .select("*", { count: "exact", head: true })
+        .eq("is_active", true);
+
+      // Fetch pending quotations (sent status)
+      const { count: quotationCount } = await supabase
+        .from("quotations")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "sent");
+
+      // Fetch monthly revenue
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      
+      const { data: invoices } = await supabase
+        .from("sales_invoices")
+        .select("grand_total")
+        .gte("created_at", startOfMonth.toISOString());
+
+      const monthlyRevenue = invoices?.reduce((sum, inv) => sum + (inv.grand_total || 0), 0) || 0;
+
+      // Fetch low stock items
+      const { data: lowStockData } = await supabase
+        .from("inventory_items")
+        .select("quantity, min_stock_level")
+        .eq("is_active", true);
+
+      const lowStockCount = lowStockData?.filter(
+        (item) => item.quantity < (item.min_stock_level || 0)
+      ).length || 0;
+
+      // Fetch pending deliveries (sent status)
+      const { count: deliveryCount } = await supabase
+        .from("purchase_orders")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "sent");
+
+      setStats({
+        totalInventory: inventoryCount || 0,
+        activeCustomers: customerCount || 0,
+        pendingQuotations: quotationCount || 0,
+        monthlyRevenue,
+        lowStockItems: lowStockCount,
+        expiringQuotations: 0,
+        pendingDeliveries: deliveryCount || 0,
+      });
+    };
+
+    fetchStats();
+
+    // Real-time subscriptions
+    const channels = [
+      supabase.channel("dashboard-inventory").on("postgres_changes", { event: "*", schema: "public", table: "inventory_items" }, fetchStats),
+      supabase.channel("dashboard-customers").on("postgres_changes", { event: "*", schema: "public", table: "customers" }, fetchStats),
+      supabase.channel("dashboard-quotations").on("postgres_changes", { event: "*", schema: "public", table: "quotations" }, fetchStats),
+      supabase.channel("dashboard-invoices").on("postgres_changes", { event: "*", schema: "public", table: "sales_invoices" }, fetchStats),
+    ];
+
+    channels.forEach((ch) => ch.subscribe());
+
+    return () => {
+      channels.forEach((ch) => supabase.removeChannel(ch));
+    };
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
@@ -43,9 +136,9 @@ export const DashboardHome = () => {
             <Package className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">245</div>
+            <div className="text-2xl font-bold">{stats.totalInventory}</div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-primary">+12%</span> from last month
+              Active items in stock
             </p>
           </CardContent>
         </Card>
@@ -56,9 +149,9 @@ export const DashboardHome = () => {
             <Users className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">89</div>
+            <div className="text-2xl font-bold">{stats.activeCustomers}</div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-accent">+5</span> new this month
+              Registered customers
             </p>
           </CardContent>
         </Card>
@@ -69,9 +162,9 @@ export const DashboardHome = () => {
             <FileText className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">23</div>
+            <div className="text-2xl font-bold">{stats.pendingQuotations}</div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-yellow-600">7</span> expiring soon
+              Awaiting approval
             </p>
           </CardContent>
         </Card>
@@ -82,12 +175,27 @@ export const DashboardHome = () => {
             <DollarSign className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$248K</div>
+            <div className="text-2xl font-bold">
+              ${stats.monthlyRevenue >= 1000 
+                ? `${(stats.monthlyRevenue / 1000).toFixed(0)}K` 
+                : stats.monthlyRevenue.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-accent">+18%</span> from last month
+              This month's sales
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SalesPerformanceChart />
+        <QuotationStatsChart />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <StockLevelsChart />
+        <CategoryStockChart />
       </div>
 
       {/* Quick Actions & Recent Activity */}
