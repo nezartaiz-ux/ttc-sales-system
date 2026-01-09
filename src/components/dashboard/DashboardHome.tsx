@@ -21,6 +21,7 @@ import { SalesPerformanceChart } from "./SalesPerformanceChart";
 import { QuotationStatsChart } from "./QuotationStatsChart";
 import { CategoryStockChart } from "./CategoryStockChart";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserCategories } from "@/hooks/useUserCategories";
 
 export const DashboardHome = () => {
   const navigate = useNavigate();
@@ -28,10 +29,11 @@ export const DashboardHome = () => {
   const [isPOModalOpen, setIsPOModalOpen] = useState(false);
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const { getCategoryIds, hasRestrictions, isAdmin, loading: categoriesLoading } = useUserCategories();
   
   // Real-time stats
   const [stats, setStats] = useState({
-    totalInventory: 0,
+    totalStock: 0,
     activeCustomers: 0,
     pendingQuotations: 0,
     monthlyRevenue: 0,
@@ -41,12 +43,23 @@ export const DashboardHome = () => {
   });
 
   useEffect(() => {
+    if (categoriesLoading) return;
+    
     const fetchStats = async () => {
-      // Fetch inventory count
-      const { count: inventoryCount } = await supabase
+      const categoryIds = getCategoryIds();
+      const shouldFilter = hasRestrictions && !isAdmin && categoryIds.length > 0;
+      
+      // Fetch inventory count - filtered by user categories
+      let inventoryQuery = supabase
         .from("inventory_items")
         .select("*", { count: "exact", head: true })
         .eq("is_active", true);
+      
+      if (shouldFilter) {
+        inventoryQuery = inventoryQuery.in("category_id", categoryIds);
+      }
+      
+      const { count: inventoryCount } = await inventoryQuery;
 
       // Fetch customer count
       const { count: customerCount } = await supabase
@@ -54,7 +67,7 @@ export const DashboardHome = () => {
         .select("*", { count: "exact", head: true })
         .eq("is_active", true);
 
-      // Fetch pending quotations (sent status)
+      // Fetch pending quotations (sent status) - filtered by user categories via items
       const { count: quotationCount } = await supabase
         .from("quotations")
         .select("*", { count: "exact", head: true })
@@ -72,11 +85,17 @@ export const DashboardHome = () => {
 
       const monthlyRevenue = invoices?.reduce((sum, inv) => sum + (inv.grand_total || 0), 0) || 0;
 
-      // Fetch low stock items
-      const { data: lowStockData } = await supabase
+      // Fetch low stock items - filtered by user categories
+      let lowStockQuery = supabase
         .from("inventory_items")
-        .select("quantity, min_stock_level")
+        .select("quantity, min_stock_level, category_id")
         .eq("is_active", true);
+      
+      if (shouldFilter) {
+        lowStockQuery = lowStockQuery.in("category_id", categoryIds);
+      }
+      
+      const { data: lowStockData } = await lowStockQuery;
 
       const lowStockCount = lowStockData?.filter(
         (item) => item.quantity < (item.min_stock_level || 0)
@@ -89,7 +108,7 @@ export const DashboardHome = () => {
         .eq("status", "sent");
 
       setStats({
-        totalInventory: inventoryCount || 0,
+        totalStock: inventoryCount || 0,
         activeCustomers: customerCount || 0,
         pendingQuotations: quotationCount || 0,
         monthlyRevenue,
@@ -114,7 +133,7 @@ export const DashboardHome = () => {
     return () => {
       channels.forEach((ch) => supabase.removeChannel(ch));
     };
-  }, []);
+  }, [categoriesLoading, hasRestrictions, isAdmin]);
 
   return (
     <div className="space-y-6">
@@ -132,11 +151,11 @@ export const DashboardHome = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Inventory</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Stock</CardTitle>
             <Package className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalInventory}</div>
+            <div className="text-2xl font-bold">{stats.totalStock}</div>
             <p className="text-xs text-muted-foreground">
               Active items in stock
             </p>
@@ -241,7 +260,7 @@ export const DashboardHome = () => {
                 <div className="flex items-center gap-3">
                   <Package className="h-8 w-8 text-primary" />
                   <div>
-                    <h3 className="font-medium">Add Inventory</h3>
+                    <h3 className="font-medium">Add Stock</h3>
                     <p className="text-xs text-muted-foreground">New items</p>
                   </div>
                 </div>
