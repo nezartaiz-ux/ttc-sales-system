@@ -231,21 +231,21 @@ export const generateQuotationPDF = (data: QuotationData) => {
   doc.setFont('helvetica', 'normal');
   doc.text(data.quotation_number, valueX, yPos);
   
-  // Right side - Quotation Date aligned to right
+  // Right side - Quotation Date aligned to right with proper spacing
   doc.setFont('helvetica', 'bold');
-  doc.text('Quotation Date:', rightLabelX, yPos);
+  doc.text('Quotation Date:', pageWidth - 60, yPos);
   doc.setFont('helvetica', 'normal');
   const dateText = data.quotation_date || data.validity_period;
   doc.text(dateText, pageWidth - 14, yPos, { align: 'right' });
   
-  yPos += 4;
+  yPos += 6;
   doc.setFont('helvetica', 'bold');
   doc.text('Customer:', labelX, yPos);
   doc.setFont('helvetica', 'normal');
   doc.text(data.customer_name, valueX, yPos);
   
   if (data.delivery_terms) {
-    yPos += 4;
+    yPos += 6;
     doc.setFont('helvetica', 'bold');
     doc.text('Delivery Terms:', labelX, yPos);
     doc.setFont('helvetica', 'normal');
@@ -253,7 +253,7 @@ export const generateQuotationPDF = (data: QuotationData) => {
   }
   
   if (data.delivery_details) {
-    yPos += 4;
+    yPos += 6;
     doc.setFont('helvetica', 'bold');
     doc.text('Delivery Details:', labelX, yPos);
     doc.setFont('helvetica', 'normal');
