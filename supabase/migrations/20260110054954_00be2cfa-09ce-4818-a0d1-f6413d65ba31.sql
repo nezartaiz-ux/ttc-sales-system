@@ -1,0 +1,1 @@
+UPDATE profiles SET full_name = 'Nizar' WHERE full_name LIKE '%Nezartaiz%' OR full_name LIKE '%nezartaiz%';
