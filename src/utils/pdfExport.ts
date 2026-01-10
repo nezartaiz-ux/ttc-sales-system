@@ -238,14 +238,14 @@ export const generateQuotationPDF = (data: QuotationData) => {
   const dateText = data.quotation_date || data.validity_period;
   doc.text(dateText, pageWidth - 14, yPos, { align: 'right' });
   
-  yPos += 6;
+  yPos += 7;
   doc.setFont('helvetica', 'bold');
   doc.text('Customer:', labelX, yPos);
   doc.setFont('helvetica', 'normal');
   doc.text(data.customer_name, valueX, yPos);
   
   if (data.delivery_terms) {
-    yPos += 6;
+    yPos += 7;
     doc.setFont('helvetica', 'bold');
     doc.text('Delivery Terms:', labelX, yPos);
     doc.setFont('helvetica', 'normal');
@@ -253,7 +253,7 @@ export const generateQuotationPDF = (data: QuotationData) => {
   }
   
   if (data.delivery_details) {
-    yPos += 6;
+    yPos += 7;
     doc.setFont('helvetica', 'bold');
     doc.text('Delivery Details:', labelX, yPos);
     doc.setFont('helvetica', 'normal');
@@ -296,28 +296,28 @@ export const generateQuotationPDF = (data: QuotationData) => {
       formatCurrency(item.unit_price),
       formatCurrency(item.total_price)
     ]);
-    // Description row if available
+    // Description row if available - show product details
     if (item.description) {
       tableBody.push([
-        { content: item.description, colSpan: 4, styles: { fontSize: 7, textColor: [80, 80, 80], cellPadding: { top: 0, bottom: 2, left: 4, right: 2 } } }
+        { content: item.description, colSpan: 4, styles: { fontSize: 7, textColor: [80, 80, 80], fontStyle: 'italic', cellPadding: { top: 1, bottom: 3, left: 6, right: 2 } } }
       ]);
     }
   });
 
   autoTable(doc, {
-    startY: yPos + 4,
+    startY: yPos + 6,
     head: [['Item', 'Qty', 'Unit Price', 'Total']],
     body: tableBody,
     foot: footRows,
     showFoot: 'lastPage',
-    styles: { fontSize: 8, cellPadding: 1.5 },
+    styles: { fontSize: 8, cellPadding: 2.5 },
     headStyles: { fillColor: [60, 60, 60], textColor: [255, 255, 255], fontStyle: 'bold' },
-    footStyles: { cellPadding: 1 },
+    footStyles: { cellPadding: 1.5 },
     margin: { bottom: marginBottom }
   });
   
   // Add amount in words
-  let currentY = (doc as any).lastAutoTable.finalY + 4;
+  let currentY = (doc as any).lastAutoTable.finalY + 6;
   if (currentY > pageHeight - marginBottom - 15) {
     doc.addPage();
     addPDFHeader(doc, true);
@@ -327,11 +327,11 @@ export const generateQuotationPDF = (data: QuotationData) => {
   doc.setFont('helvetica', 'bold');
   doc.text('Amount in Words:', 14, currentY);
   doc.setFont('helvetica', 'normal');
-  doc.text(amountToWords(data.grand_total), 14, currentY + 3);
+  doc.text(amountToWords(data.grand_total), 14, currentY + 5);
   
   // Notes with proper multi-line handling - section headers bold and at start of line
   if (data.notes) {
-    let notesY = currentY + 8;
+    let notesY = currentY + 10;
     doc.setFontSize(8);
     
     const maxWidth = pageWidth - 28;
@@ -353,7 +353,7 @@ export const generateQuotationPDF = (data: QuotationData) => {
         doc.setFont('helvetica', 'bold');
         doc.text(trimmedLine, 14, notesY);
         doc.setFont('helvetica', 'normal');
-        notesY += 3.5;
+        notesY += 4.5;
       } else if (trimmedLine) {
         const lines = doc.splitTextToSize(trimmedLine, maxWidth);
         lines.forEach((line: string) => {
@@ -363,7 +363,7 @@ export const generateQuotationPDF = (data: QuotationData) => {
             notesY = 35;
           }
           doc.text(line, 14, notesY);
-          notesY += 3;
+          notesY += 4;
         });
       }
     });
