@@ -399,7 +399,23 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
             </div>
             <div className="space-y-2">
               <Label>Customs & Duty Status</Label>
-              <Select value={formData.customs_duty_status} onValueChange={(v) => setFormData(p => ({ ...p, customs_duty_status: v }))}>
+              <Select value={formData.customs_duty_status} onValueChange={(v) => {
+                let delivery_terms = formData.delivery_terms;
+                let delivery_details = formData.delivery_details;
+                
+                if (v === 'CIF Aden Freezone') {
+                  delivery_terms = 'Within a week from the date of receiving your PO along with payment';
+                  delivery_details = 'CIF Aden without customs duty and sales tax.';
+                } else if (v === 'DDP Aden') {
+                  delivery_terms = 'Within a week from the date of receiving your PO along with payment';
+                  delivery_details = 'DDP Aden with customs duty and sales tax., delivery will be in our Aden office';
+                } else if (v === "DDP Sana'a") {
+                  delivery_terms = 'Within two weeks from the date of receiving your PO along with payment';
+                  delivery_details = 'DDP Aden with customs duty and sales tax., delivery will be in our Sana\'a office';
+                }
+                
+                setFormData(p => ({ ...p, customs_duty_status: v, delivery_terms, delivery_details }));
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select customs & duty status" />
                 </SelectTrigger>
