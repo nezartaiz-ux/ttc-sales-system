@@ -112,6 +112,16 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
 
   useEffect(() => {
     const loadData = async () => {
+      // Load customers first - always needed
+      const { data: customersData } = await supabase
+        .from('customers')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name');
+      
+      setCustomers(customersData || []);
+
+      // Load inventory items with category filter if needed
       const categoryIds = getCategoryIds();
       
       let inventoryQuery = supabase
@@ -125,23 +135,24 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
         inventoryQuery = inventoryQuery.in('category_id', categoryIds);
       }
 
-      const [{ data: customers }, { data: inventory }] = await Promise.all([
-        supabase.from('customers').select('id, name').eq('is_active', true).order('name'),
-        inventoryQuery
-      ]);
-      setCustomers(customers || []);
+      const { data: inventory } = await inventoryQuery;
       setInventoryItems(inventory || []);
     };
-    if (open && !categoriesLoading) {
-      loadData();
+
+    if (open) {
       // Reset validity_period and notes when modal opens
       setFormData(prev => ({ 
         ...prev, 
         validity_period: new Date().toISOString().split('T')[0],
         notes: DEFAULT_TERMS_CONDITIONS
       }));
+      
+      // Load data only when categories are ready
+      if (!categoriesLoading) {
+        loadData();
+      }
     }
-  }, [open, categoriesLoading, hasRestrictions]);
+  }, [open, categoriesLoading, hasRestrictions, getCategoryIds]);
 
   const addItem = () => {
     setItems(prev => [...prev, {
