@@ -111,8 +111,17 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
   const { getCategoryIds, hasRestrictions, loading: categoriesLoading } = useUserCategories();
 
   useEffect(() => {
-    const loadData = async () => {
-      // Load customers first - always needed
+    if (!open) return;
+    
+    // Reset form when modal opens
+    setFormData(prev => ({ 
+      ...prev, 
+      validity_period: new Date().toISOString().split('T')[0],
+      notes: DEFAULT_TERMS_CONDITIONS
+    }));
+
+    // Load customers immediately
+    const loadCustomers = async () => {
       const { data: customersData } = await supabase
         .from('customers')
         .select('id, name')
@@ -120,8 +129,15 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
         .order('name');
       
       setCustomers(customersData || []);
+    };
+    loadCustomers();
+  }, [open]);
 
-      // Load inventory items with category filter if needed
+  // Separate effect for inventory items that depends on categories
+  useEffect(() => {
+    if (!open || categoriesLoading) return;
+
+    const loadInventory = async () => {
       const categoryIds = getCategoryIds();
       
       let inventoryQuery = supabase
@@ -130,7 +146,6 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
         .eq('is_active', true)
         .order('name');
       
-      // Filter by user's categories if they have restrictions
       if (hasRestrictions && categoryIds.length > 0) {
         inventoryQuery = inventoryQuery.in('category_id', categoryIds);
       }
@@ -138,21 +153,8 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
       const { data: inventory } = await inventoryQuery;
       setInventoryItems(inventory || []);
     };
-
-    if (open) {
-      // Reset validity_period and notes when modal opens
-      setFormData(prev => ({ 
-        ...prev, 
-        validity_period: new Date().toISOString().split('T')[0],
-        notes: DEFAULT_TERMS_CONDITIONS
-      }));
-      
-      // Load data only when categories are ready
-      if (!categoriesLoading) {
-        loadData();
-      }
-    }
-  }, [open, categoriesLoading, hasRestrictions, getCategoryIds]);
+    loadInventory();
+  }, [open, categoriesLoading, hasRestrictions]);
 
   const addItem = () => {
     setItems(prev => [...prev, {
