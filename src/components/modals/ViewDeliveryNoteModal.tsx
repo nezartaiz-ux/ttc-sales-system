@@ -1,22 +1,9 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { FileDown, Printer, Pencil } from "lucide-react";
+import { FileDown, Printer, Pencil, X } from "lucide-react";
 import { format } from "date-fns";
 import { generateDeliveryNotePDF, printDeliveryNote } from "@/utils/deliveryNotePdf";
+import tehamaLogo from "@/assets/tehama-logo.png";
 
 interface ViewDeliveryNoteModalProps {
   open: boolean;
@@ -25,33 +12,33 @@ interface ViewDeliveryNoteModalProps {
   onEdit?: () => void;
 }
 
+const COMPANY_INFO = {
+  name: "Tehama Trading Company",
+  address: "Sana'a Regional Office",
+  footer: {
+    postBox: "Post Box: 73",
+    location: "Sana'a, Yemen",
+    phone: "Phone: 967 1 208916/400266",
+    fax: "Fax: 967 1 466056"
+  }
+};
+
+const getMaterialConditionLabel = (type: string) => {
+  switch (type) {
+    case 'new':
+    case 'new_sale':
+      return 'New';
+    case 'used':
+    case 'out_of_warranty':
+      return 'Used';
+    case 'under_warranty':
+      return 'Under Warranty';
+    default:
+      return type;
+  }
+};
+
 export const ViewDeliveryNoteModal = ({ open, onOpenChange, deliveryNote, onEdit }: ViewDeliveryNoteModalProps) => {
-  const getMaterialConditionLabel = (type: string) => {
-    switch (type) {
-      case 'new':
-        return 'New';
-      case 'used':
-        return 'Used';
-      case 'under_warranty':
-        return 'Under Warranty';
-      default:
-        return type;
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <Badge variant="outline">Pending</Badge>;
-      case 'delivered':
-        return <Badge className="bg-green-500">Delivered</Badge>;
-      case 'cancelled':
-        return <Badge variant="destructive">Cancelled</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
   const handleExportPDF = () => {
     generateDeliveryNotePDF({
       delivery_note_number: deliveryNote.delivery_note_number,
@@ -96,114 +83,145 @@ export const ViewDeliveryNoteModal = ({ open, onOpenChange, deliveryNote, onEdit
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>Delivery Note #{deliveryNote.delivery_note_number}</DialogTitle>
-            <div className="flex gap-2">
-              {onEdit && (
-                <Button variant="outline" size="sm" onClick={onEdit}>
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-4 h-4 mr-2" />
-                Print
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+        {/* Action Buttons */}
+        <div className="sticky top-0 z-10 bg-background border-b p-3 flex justify-between items-center">
+          <div className="flex gap-2">
+            {onEdit && (
+              <Button variant="outline" size="sm" onClick={onEdit}>
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExportPDF}>
-                <FileDown className="w-4 h-4 mr-2" />
-                PDF
-              </Button>
-            </div>
+            )}
+            <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Printer className="w-4 h-4 mr-2" />
+              Print
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportPDF}>
+              <FileDown className="w-4 h-4 mr-2" />
+              PDF
+            </Button>
           </div>
-        </DialogHeader>
+          <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
 
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+        {/* PDF-like Preview */}
+        <div className="bg-white text-black p-8 min-h-[800px]" style={{ fontFamily: 'Arial, sans-serif' }}>
+          {/* Header */}
+          <div className="flex justify-between items-start border-b-2 border-gray-800 pb-3 mb-4">
             <div>
-              <p className="text-sm text-muted-foreground">Date</p>
-              <p className="font-medium">
-                {deliveryNote.delivery_note_date && format(new Date(deliveryNote.delivery_note_date), 'dd/MM/yyyy')}
-              </p>
+              <h3 className="font-bold text-base m-0">{COMPANY_INFO.name}</h3>
+              <p className="text-xs text-gray-600 m-0">{COMPANY_INFO.address}</p>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Status</p>
-              <p>{getStatusBadge(deliveryNote.status)}</p>
+            <img src={tehamaLogo} alt="Logo" className="w-28 h-auto" />
+          </div>
+
+          {/* Title */}
+          <h1 className="text-center text-xl font-bold my-4">MATERIALS DELIVERY NOTE</h1>
+
+          {/* Details */}
+          <div className="grid grid-cols-2 gap-x-8 gap-y-1 mb-4 text-sm">
+            <div className="flex gap-2">
+              <span className="font-bold">DN #:</span>
+              <span>{deliveryNote.delivery_note_number}</span>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Customer</p>
-              <p className="font-medium">{deliveryNote.customer?.name}</p>
+            <div className="flex gap-2">
+              <span className="font-bold">Date:</span>
+              <span>{deliveryNote.delivery_note_date && format(new Date(deliveryNote.delivery_note_date), 'dd/MM/yyyy')}</span>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Delivery Address</p>
-              <p className="font-medium">{deliveryNote.customer_address || '-'}</p>
+            <div className="flex gap-2">
+              <span className="font-bold">Customer:</span>
+              <span>{deliveryNote.customer?.name || '-'}</span>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Model</p>
-              <p className="font-medium">{deliveryNote.model || '-'}</p>
+            <div className="flex gap-2">
+              <span className="font-bold">Address:</span>
+              <span>{deliveryNote.customer_address || '-'}</span>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Material Condition</p>
-              <p className="font-medium">{getMaterialConditionLabel(deliveryNote.warranty_type)}</p>
+            <div className="flex gap-2">
+              <span className="font-bold">Model:</span>
+              <span>{deliveryNote.model || '-'}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="font-bold">Material Condition:</span>
+              <span>{getMaterialConditionLabel(deliveryNote.warranty_type)}</span>
             </div>
           </div>
+
+          {/* Items Table */}
+          <table className="w-full border-collapse mb-4 text-sm">
+            <thead>
+              <tr className="bg-gray-700 text-white">
+                <th className="border border-gray-300 p-2 text-left font-bold w-10">#</th>
+                <th className="border border-gray-300 p-2 text-left font-bold w-24">Model</th>
+                <th className="border border-gray-300 p-2 text-left font-bold">Description</th>
+                <th className="border border-gray-300 p-2 text-left font-bold w-12">Qty</th>
+                <th className="border border-gray-300 p-2 text-left font-bold w-28">Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deliveryNote.items?.map((item: any, index: number) => (
+                <tr key={item.id}>
+                  <td className="border border-gray-300 p-2">{index + 1}</td>
+                  <td className="border border-gray-300 p-2">{item.model || '-'}</td>
+                  <td className="border border-gray-300 p-2">{item.description}</td>
+                  <td className="border border-gray-300 p-2">{item.quantity}</td>
+                  <td className="border border-gray-300 p-2">{item.remarks || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
           {/* Dispatching Details */}
-          <div className="border rounded-lg p-4">
-            <h3 className="font-semibold mb-3">Dispatching Details</h3>
-            <div className="grid grid-cols-3 gap-4">
+          <div className="border rounded p-3 mb-4">
+            <p className="font-bold text-sm mb-2">Dispatching Details:</p>
+            <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
-                <p className="text-sm text-muted-foreground">Mean of Despatch</p>
-                <p className="font-medium">{deliveryNote.mean_of_despatch || '-'}</p>
+                <span className="text-gray-600">Mean of Despatch:</span>
+                <span className="ml-2">{deliveryNote.mean_of_despatch || '-'}</span>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Vehicle Number</p>
-                <p className="font-medium">{deliveryNote.mean_number || '-'}</p>
+                <span className="text-gray-600">Vehicle #:</span>
+                <span className="ml-2">{deliveryNote.mean_number || '-'}</span>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Driver Name</p>
-                <p className="font-medium">{deliveryNote.driver_name || '-'}</p>
+                <span className="text-gray-600">Driver:</span>
+                <span className="ml-2">{deliveryNote.driver_name || '-'}</span>
               </div>
             </div>
           </div>
 
-          {/* Materials List */}
-          <div>
-            <h3 className="font-semibold mb-3">Materials List</h3>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">#</TableHead>
-                  <TableHead>Model</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="w-20">Qty</TableHead>
-                  <TableHead>Remarks</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {deliveryNote.items?.map((item: any, index: number) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{item.model || '-'}</TableCell>
-                    <TableCell>{item.description}</TableCell>
-                    <TableCell>{item.quantity}</TableCell>
-                    <TableCell>{item.remarks || '-'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
+          {/* Notes */}
           {deliveryNote.notes && (
-            <div>
-              <h3 className="font-semibold mb-2">Notes</h3>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{deliveryNote.notes}</p>
+            <div className="text-xs leading-relaxed mb-6">
+              <p className="font-bold mb-1">Notes:</p>
+              <p className="whitespace-pre-wrap">{deliveryNote.notes}</p>
             </div>
           )}
 
-          <div className="text-sm text-muted-foreground">
-            <p>Created by: {deliveryNote.created_by_profile?.full_name || '-'}</p>
+          {/* Signature Section - 3 columns */}
+          <div className="grid grid-cols-3 gap-4 mt-8">
+            <div className="text-center">
+              <p className="text-sm font-bold mb-1">Prepared by:</p>
+              <p className="text-sm mb-4">{deliveryNote.created_by_profile?.full_name || ''}</p>
+              <div className="border-t border-black pt-1 text-xs mx-4">Signature</div>
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-bold mb-1">Received by:</p>
+              <p className="text-sm mb-4">{deliveryNote.customer?.name || ''}</p>
+              <div className="border-t border-black pt-1 text-xs mx-4">Signature</div>
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-bold mb-1">Driver:</p>
+              <p className="text-sm mb-4">{deliveryNote.driver_name || '_______________'}</p>
+              <div className="border-t border-black pt-1 text-xs mx-4">Signature</div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="mt-8 pt-3 border-t text-center text-xs text-gray-500">
+            {COMPANY_INFO.footer.postBox} | {COMPANY_INFO.footer.location} | {COMPANY_INFO.footer.phone} | {COMPANY_INFO.footer.fax}
           </div>
         </div>
       </DialogContent>
