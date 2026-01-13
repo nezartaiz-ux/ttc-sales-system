@@ -9,7 +9,16 @@ import { Download, BarChart3, TrendingUp, PieChart, FileText, Truck, Zap, Tracto
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { exportToCSV } from "@/utils/csvExport";
-import { generateReportPDF, generateDetailedQuotationReport, generateDetailedInventoryReport } from "@/utils/reportPdfExport";
+import { 
+  generateReportPDF, 
+  generateDetailedQuotationReport, 
+  generateDetailedInventoryReport,
+  generateDetailedSalesReport,
+  generateDetailedPOReport,
+  generateDetailedCustomersReport,
+  generateDetailedSuppliersReport,
+  generateDetailedDeliveryNotesReport
+} from "@/utils/reportPdfExport";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserCategories } from "@/hooks/useUserCategories";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -254,6 +263,30 @@ const Reports = () => {
     }));
     exportToCSV(exportData, `delivery-notes-${new Date().toISOString().split('T')[0]}.csv`);
     toast({ title: 'Success', description: 'Report exported' });
+  };
+
+  const handleExportDeliveryNotesPDF = () => {
+    if (deliveryNotes.length === 0) {
+      toast({ title: 'Info', description: 'No data to export' });
+      return;
+    }
+    const dnData = deliveryNotes.map(dn => ({
+      delivery_note_number: dn.delivery_note_number,
+      delivery_note_date: dn.delivery_note_date,
+      customer_name: dn.customer?.name || '-',
+      invoice_number: dn.sales_invoice?.invoice_number || '-',
+      warranty_type: dn.warranty_type || '-',
+      driver_name: dn.driver_name || '-',
+      status: dn.status
+    }));
+    
+    generateDetailedDeliveryNotesReport({
+      title: 'DELIVERY NOTES Report',
+      dateRange: dnStartDate && dnEndDate ? `${dnStartDate} to ${dnEndDate}` : undefined,
+      deliveryNotes: dnData,
+      created_by_name: userFullName || 'N/A'
+    });
+    toast({ title: 'Success', description: 'PDF report generated' });
   };
 
   const handleExportAll = async () => {
@@ -530,8 +563,10 @@ const Reports = () => {
           toast({ title: 'Info', description: 'No inventory items found' });
         }
       } else if (customReportType === 'sales') {
-        // Sales invoices with category filter
-        const { data: invoices } = await supabase.from('sales_invoices').select('*');
+        // Sales invoices with category filter - fetch with customer details
+        const { data: invoices } = await supabase
+          .from('sales_invoices')
+          .select('*, customers(name)');
         
         let filteredData = invoices || [];
         if (hasRestrictions && categoryIds.length > 0) {
@@ -546,15 +581,22 @@ const Reports = () => {
         }
         
         if (filteredData.length > 0) {
-          const headers = Object.keys(filteredData[0]);
-          const rows = filteredData.map(row => headers.map(h => String((row as any)[h] || '')));
+          const salesData = filteredData.map((inv: any) => ({
+            invoice_number: inv.invoice_number,
+            created_at: inv.created_at,
+            customer_name: inv.customers?.name || 'N/A',
+            invoice_type: inv.invoice_type,
+            total_amount: inv.total_amount,
+            discount_type: inv.discount_type,
+            discount_value: inv.discount_value,
+            grand_total: inv.grand_total,
+            status: inv.status
+          }));
           
-          generateReportPDF({
+          generateDetailedSalesReport({
             title: 'SALES Report',
             dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
-            headers,
-            rows,
-            reportType: 'sales',
+            invoices: salesData,
             created_by_name: userFullName || 'N/A'
           });
           toast({ title: 'Success', description: 'PDF report generated' });
@@ -562,8 +604,10 @@ const Reports = () => {
           toast({ title: 'Info', description: 'No data available for this report' });
         }
       } else if (customReportType === 'purchase-orders') {
-        // Purchase orders with category filter
-        const { data: pos } = await supabase.from('purchase_orders').select('*');
+        // Purchase orders with category filter - fetch with supplier details
+        const { data: pos } = await supabase
+          .from('purchase_orders')
+          .select('*, suppliers(name)');
         
         let filteredData = pos || [];
         if (hasRestrictions && categoryIds.length > 0) {
@@ -578,15 +622,55 @@ const Reports = () => {
         }
         
         if (filteredData.length > 0) {
-          const headers = Object.keys(filteredData[0]);
-          const rows = filteredData.map(row => headers.map(h => String((row as any)[h] || '')));
+          const poData = filteredData.map((po: any) => ({
+            order_number: po.order_number,
+            created_at: po.created_at,
+            supplier_name: po.suppliers?.name || 'N/A',
+            expected_delivery_date: po.expected_delivery_date,
+            total_amount: po.total_amount,
+            tax_amount: po.tax_amount,
+            grand_total: po.grand_total,
+            status: po.status
+          }));
           
-          generateReportPDF({
+          generateDetailedPOReport({
             title: 'PURCHASE ORDERS Report',
             dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
-            headers,
-            rows,
-            reportType: 'purchase_orders',
+            orders: poData,
+            created_by_name: userFullName || 'N/A'
+          });
+          toast({ title: 'Success', description: 'PDF report generated' });
+        } else {
+          toast({ title: 'Info', description: 'No data available for this report' });
+        }
+      } else if (customReportType === 'customers') {
+        // Customers report
+        const { data, error } = await supabase.from('customers').select('*');
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          generateDetailedCustomersReport({
+            title: 'CUSTOMERS Report',
+            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
+            customers: data,
+            created_by_name: userFullName || 'N/A'
+          });
+          toast({ title: 'Success', description: 'PDF report generated' });
+        } else {
+          toast({ title: 'Info', description: 'No data available for this report' });
+        }
+      } else if (customReportType === 'suppliers') {
+        // Suppliers report
+        const { data, error } = await supabase.from('suppliers').select('*');
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          generateDetailedSuppliersReport({
+            title: 'SUPPLIERS Report',
+            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
+            suppliers: data,
             created_by_name: userFullName || 'N/A'
           });
           toast({ title: 'Success', description: 'PDF report generated' });
@@ -594,7 +678,7 @@ const Reports = () => {
           toast({ title: 'Info', description: 'No data available for this report' });
         }
       } else {
-        // Default report generation for other types (customers, suppliers)
+        // Default report generation for any other types
         const tableName = customReportType as any;
         const { data, error } = await supabase.from(tableName).select('*');
         
@@ -963,6 +1047,10 @@ const Reports = () => {
                 <Button variant="outline" onClick={handleExportDeliveryNotesCSV} disabled={deliveryNotes.length === 0}>
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
+                </Button>
+                <Button variant="outline" onClick={handleExportDeliveryNotesPDF} disabled={deliveryNotes.length === 0}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export PDF
                 </Button>
               </div>
 
