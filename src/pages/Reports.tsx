@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, BarChart3, TrendingUp, PieChart, FileText, Truck, Zap, Tractor } from "lucide-react";
+import { Download, BarChart3, TrendingUp, PieChart, FileText, Truck, Zap, Tractor, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { exportToCSV } from "@/utils/csvExport";
@@ -17,7 +17,14 @@ import {
   generateDetailedPOReport,
   generateDetailedCustomersReport,
   generateDetailedSuppliersReport,
-  generateDetailedDeliveryNotesReport
+  generateDetailedDeliveryNotesReport,
+  printDetailedQuotationReport,
+  printDetailedInventoryReport,
+  printDetailedSalesReport,
+  printDetailedPOReport,
+  printDetailedCustomersReport,
+  printDetailedSuppliersReport,
+  printDetailedDeliveryNotesReport
 } from "@/utils/reportPdfExport";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserCategories } from "@/hooks/useUserCategories";
@@ -707,6 +714,240 @@ const Reports = () => {
     setIsExporting(false);
   };
 
+  // Print report function - same logic as PDF but opens for printing
+  const handlePrintCustomReport = async () => {
+    if (!customReportType) return;
+    setIsExporting(true);
+    try {
+      const categoryIds = getCategoryIds();
+
+      // Get filtered inventory items for category restrictions
+      let inventoryQuery = supabase.from('inventory_items').select('id, category_id');
+      if (hasRestrictions && categoryIds.length > 0) {
+        inventoryQuery = inventoryQuery.in('category_id', categoryIds);
+      }
+      const { data: inventoryItems } = await inventoryQuery;
+      const validItemIds = inventoryItems?.map(i => i.id) || [];
+
+      if (customReportType === 'quotations') {
+        let query = supabase
+          .from('quotations')
+          .select('*, customers(name), quotation_items(*, inventory_items(name, category_id))')
+          .order('created_at', { ascending: true });
+        
+        if (startDate && endDate) {
+          const start = new Date(`${startDate}T00:00:00.000Z`).toISOString();
+          const end = new Date(`${endDate}T23:59:59.999Z`).toISOString();
+          query = query.gte('created_at', start).lte('created_at', end);
+        }
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        let filteredData = data || [];
+        if (hasRestrictions && categoryIds.length > 0) {
+          filteredData = filteredData.filter((q: any) => 
+            q.quotation_items?.some((item: any) => 
+              categoryIds.includes(item.inventory_items?.category_id)
+            )
+          );
+        }
+        
+        if (filteredData.length > 0) {
+          const quotationsData = filteredData.map((q: any) => ({
+            quotation_number: q.quotation_number,
+            created_at: q.created_at,
+            customer_name: q.customers?.name || 'N/A',
+            total_amount: q.total_amount,
+            discount_type: q.discount_type,
+            discount_value: q.discount_value,
+            tax_amount: q.tax_amount,
+            grand_total: q.grand_total,
+            items: q.quotation_items?.filter((item: any) => 
+              !hasRestrictions || categoryIds.includes(item.inventory_items?.category_id)
+            ).map((item: any) => ({
+              name: item.inventory_items?.name || 'N/A',
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              total_price: item.total_price
+            })) || []
+          }));
+          
+          printDetailedQuotationReport({
+            title: 'Quotations Report',
+            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
+            quotations: quotationsData,
+            created_by_name: userFullName || 'N/A'
+          });
+          toast({ title: 'Success', description: 'Report opened for printing' });
+        } else {
+          toast({ title: 'Info', description: 'No quotations found' });
+        }
+      } else if (customReportType === 'inventory') {
+        let query = supabase
+          .from('inventory_items')
+          .select('*, product_categories(name), suppliers(name)')
+          .order('name', { ascending: true });
+        
+        if (hasRestrictions && categoryIds.length > 0) {
+          query = query.in('category_id', categoryIds);
+        }
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          printDetailedInventoryReport({
+            title: 'INVENTORY Report',
+            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
+            items: data,
+            created_by_name: userFullName || 'N/A'
+          });
+          toast({ title: 'Success', description: 'Report opened for printing' });
+        } else {
+          toast({ title: 'Info', description: 'No inventory items found' });
+        }
+      } else if (customReportType === 'sales') {
+        const { data: invoices } = await supabase
+          .from('sales_invoices')
+          .select('*, customers(name)');
+        
+        let filteredData = invoices || [];
+        if (hasRestrictions && categoryIds.length > 0) {
+          const { data: invoiceItems } = await supabase
+            .from('sales_invoice_items')
+            .select('sales_invoice_id, inventory_item_id');
+          const validInvoiceIds = new Set(
+            invoiceItems?.filter(ii => validItemIds.includes(ii.inventory_item_id))
+              .map(ii => ii.sales_invoice_id) || []
+          );
+          filteredData = filteredData.filter(inv => validInvoiceIds.has(inv.id));
+        }
+        
+        if (filteredData.length > 0) {
+          const salesData = filteredData.map((inv: any) => ({
+            invoice_number: inv.invoice_number,
+            created_at: inv.created_at,
+            customer_name: inv.customers?.name || 'N/A',
+            invoice_type: inv.invoice_type,
+            total_amount: inv.total_amount,
+            discount_type: inv.discount_type,
+            discount_value: inv.discount_value,
+            grand_total: inv.grand_total,
+            status: inv.status
+          }));
+          
+          printDetailedSalesReport({
+            title: 'SALES Report',
+            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
+            invoices: salesData,
+            created_by_name: userFullName || 'N/A'
+          });
+          toast({ title: 'Success', description: 'Report opened for printing' });
+        } else {
+          toast({ title: 'Info', description: 'No data available' });
+        }
+      } else if (customReportType === 'purchase-orders') {
+        const { data: pos } = await supabase
+          .from('purchase_orders')
+          .select('*, suppliers(name)');
+        
+        let filteredData = pos || [];
+        if (hasRestrictions && categoryIds.length > 0) {
+          const { data: poItems } = await supabase
+            .from('purchase_order_items')
+            .select('purchase_order_id, inventory_item_id');
+          const validPOIds = new Set(
+            poItems?.filter(pi => validItemIds.includes(pi.inventory_item_id))
+              .map(pi => pi.purchase_order_id) || []
+          );
+          filteredData = filteredData.filter(p => validPOIds.has(p.id));
+        }
+        
+        if (filteredData.length > 0) {
+          const poData = filteredData.map((po: any) => ({
+            order_number: po.order_number,
+            created_at: po.created_at,
+            supplier_name: po.suppliers?.name || 'N/A',
+            expected_delivery_date: po.expected_delivery_date,
+            total_amount: po.total_amount,
+            tax_amount: po.tax_amount,
+            grand_total: po.grand_total,
+            status: po.status
+          }));
+          
+          printDetailedPOReport({
+            title: 'PURCHASE ORDERS Report',
+            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
+            orders: poData,
+            created_by_name: userFullName || 'N/A'
+          });
+          toast({ title: 'Success', description: 'Report opened for printing' });
+        } else {
+          toast({ title: 'Info', description: 'No data available' });
+        }
+      } else if (customReportType === 'customers') {
+        const { data, error } = await supabase.from('customers').select('*');
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          printDetailedCustomersReport({
+            title: 'CUSTOMERS Report',
+            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
+            customers: data,
+            created_by_name: userFullName || 'N/A'
+          });
+          toast({ title: 'Success', description: 'Report opened for printing' });
+        } else {
+          toast({ title: 'Info', description: 'No data available' });
+        }
+      } else if (customReportType === 'suppliers') {
+        const { data, error } = await supabase.from('suppliers').select('*');
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          printDetailedSuppliersReport({
+            title: 'SUPPLIERS Report',
+            dateRange: startDate && endDate ? `${startDate} to ${endDate}` : undefined,
+            suppliers: data,
+            created_by_name: userFullName || 'N/A'
+          });
+          toast({ title: 'Success', description: 'Report opened for printing' });
+        } else {
+          toast({ title: 'Info', description: 'No data available' });
+        }
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to generate print report', variant: 'destructive' });
+    }
+    setIsExporting(false);
+  };
+
+  // Print delivery notes report
+  const handlePrintDeliveryNotesReport = () => {
+    if (deliveryNotes.length === 0) {
+      toast({ title: 'Info', description: 'No data to print' });
+      return;
+    }
+    const dnData = deliveryNotes.map(dn => ({
+      delivery_note_number: dn.delivery_note_number,
+      delivery_note_date: dn.delivery_note_date,
+      customer_name: dn.customer?.name || '-',
+      invoice_number: dn.sales_invoice?.invoice_number || '-',
+      warranty_type: dn.warranty_type || '-',
+      driver_name: dn.driver_name || '-',
+      status: dn.status
+    }));
+    
+    printDetailedDeliveryNotesReport({
+      title: 'DELIVERY NOTES Report',
+      dateRange: dnStartDate && dnEndDate ? `${dnStartDate} to ${dnEndDate}` : undefined,
+      deliveryNotes: dnData,
+      created_by_name: userFullName || 'N/A'
+    });
+    toast({ title: 'Success', description: 'Report opened for printing' });
+  };
+
   const handleGenerateCustomReportCSV = async () => {
     if (!customReportType) return;
     setIsExporting(true);
@@ -1040,7 +1281,7 @@ const Reports = () => {
                   </Select>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button onClick={fetchDeliveryNotes} disabled={loadingDeliveryNotes}>
                   {loadingDeliveryNotes ? 'Searching...' : 'Search'}
                 </Button>
@@ -1051,6 +1292,10 @@ const Reports = () => {
                 <Button variant="outline" onClick={handleExportDeliveryNotesPDF} disabled={deliveryNotes.length === 0}>
                   <FileText className="h-4 w-4 mr-2" />
                   Export PDF
+                </Button>
+                <Button variant="outline" onClick={handlePrintDeliveryNotesReport} disabled={deliveryNotes.length === 0}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print
                 </Button>
               </div>
 
@@ -1133,14 +1378,23 @@ const Reports = () => {
                   />
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button 
                   onClick={handleGenerateCustomReportPDF}
                   disabled={!customReportType || isExporting}
                   className="flex-1"
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  Generate PDF Report
+                  Generate PDF
+                </Button>
+                <Button 
+                  onClick={handlePrintCustomReport}
+                  disabled={!customReportType || isExporting}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print Report
                 </Button>
                 <Button 
                   onClick={handleGenerateCustomReportCSV}
@@ -1149,7 +1403,7 @@ const Reports = () => {
                   className="flex-1"
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Export to CSV
+                  Export CSV
                 </Button>
               </div>
             </div>
