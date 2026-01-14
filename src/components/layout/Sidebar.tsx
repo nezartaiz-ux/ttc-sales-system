@@ -18,7 +18,8 @@ import {
   Image,
   X,
   Zap,
-  Tractor
+  Tractor,
+  Info
 } from "lucide-react";
 import { useUserCategories } from "@/hooks/useUserCategories";
 import { useUserPermissions, SystemModule } from "@/hooks/useUserPermissions";
@@ -37,6 +38,7 @@ const navigation = [
   { name: "Image Gallery", href: "/image-gallery", icon: Image, module: 'image_gallery' },
   { name: "Reports", href: "/reports", icon: BarChart3, module: 'reports' },
   { name: "Settings", href: "/settings", icon: Settings, module: 'settings' },
+  { name: "About System", href: "/about", icon: Info, module: null },
 ];
 
 // Category-specific configurations
