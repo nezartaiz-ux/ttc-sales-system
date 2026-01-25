@@ -1,13 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LogOut, Bell, Settings, Menu, Zap, Truck, Tractor } from "lucide-react";
+import { LogOut, Bell, Settings, Menu, Zap, Truck, Tractor, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useUserCategories } from "@/hooks/useUserCategories";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import tehamaLogo from "@/assets/tehama-logo.png";
-
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 interface HeaderProps {
   onMenuClick?: () => void;
+  onShowTutorial?: () => void;
 }
 
 // Category-specific configurations
@@ -32,9 +34,10 @@ const categoryConfig: Record<string, { title: string; subtitle: string; icon: Re
   },
 };
 
-export const Header = ({ onMenuClick }: HeaderProps) => {
+export const Header = ({ onMenuClick, onShowTutorial }: HeaderProps) => {
   const { toast } = useToast();
   const { userCategories, hasRestrictions, isAdmin } = useUserCategories();
+  const { profile } = useUserProfile();
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -102,17 +105,44 @@ export const Header = ({ onMenuClick }: HeaderProps) => {
         </div>
         
         <div className="flex items-center gap-2 lg:gap-4">
+          {/* Tutorial button */}
+          {onShowTutorial && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={onShowTutorial}>
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>System Tutorial</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          
           <Button variant="ghost" size="icon">
             <Bell className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" className="hidden sm:flex">
             <Settings className="h-4 w-4" />
           </Button>
-          <Avatar className="hidden sm:flex">
-            <AvatarFallback className="bg-primary text-primary-foreground">
-              U
-            </AvatarFallback>
-          </Avatar>
+          
+          {/* User info with name */}
+          <div className="hidden sm:flex items-center gap-2">
+            <Avatar>
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {profile?.initials || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="hidden lg:block">
+              <p className="text-sm font-medium text-foreground leading-none">
+                {profile?.fullName || 'User'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isAdmin ? 'Administrator' : 'User'}
+              </p>
+            </div>
+          </div>
+          
           <Button variant="ghost" onClick={handleLogout} className="hidden sm:flex">
             <LogOut className="h-4 w-4 mr-2" />
             Logout
