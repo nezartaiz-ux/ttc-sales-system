@@ -88,6 +88,14 @@ const amountToWords = (amount: number): string => {
   return result;
 };
 
+// Helper function to get tax label based on customs duty status
+const getTaxLabel = (customsDutyStatus?: string | null): string => {
+  if (customsDutyStatus === 'DDP Aden' || customsDutyStatus === "DDP Sana'a") {
+    return 'Customs Duty & Sales Tax:';
+  }
+  return 'Tax:';
+};
+
 // Helper function to add footer with company info
 const addPDFFooter = (doc: jsPDF) => {
   const pageHeight = doc.internal.pageSize.height;
@@ -269,7 +277,7 @@ export const generateQuotationPDF = (data: QuotationData) => {
   }
   
   footRows.push(
-    ['', '', 'Tax:', formatCurrency(data.tax_amount)],
+    ['', '', getTaxLabel(data.customs_duty_status), formatCurrency(data.tax_amount)],
     ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
   );
   
@@ -435,7 +443,7 @@ export const generatePOPDF = (data: POData) => {
     ]),
     foot: [
       ['', '', 'Subtotal:', formatCurrency(data.total_amount)],
-      ['', '', 'Tax:', formatCurrency(data.tax_amount)],
+      ['', '', getTaxLabel(data.customs_duty_status), formatCurrency(data.tax_amount)],
       ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
     ],
     showFoot: 'lastPage',
@@ -567,7 +575,7 @@ export const printQuotation = (data: QuotationData) => {
   }
   
   footRows.push(
-    ['', '', 'Tax:', formatCurrency(data.tax_amount)],
+    ['', '', getTaxLabel(data.customs_duty_status), formatCurrency(data.tax_amount)],
     ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
   );
   
@@ -730,7 +738,7 @@ export const printPO = (data: POData) => {
     ]),
     foot: [
       ['', '', 'Subtotal:', formatCurrency(data.total_amount)],
-      ['', '', 'Tax:', formatCurrency(data.tax_amount)],
+      ['', '', getTaxLabel(data.customs_duty_status), formatCurrency(data.tax_amount)],
       ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
     ],
     showFoot: 'lastPage',
@@ -857,7 +865,7 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   }
   
   invoiceFootRows.push(
-    ['', '', 'Tax:', formatCurrency(data.tax_amount)],
+    ['', '', getTaxLabel(data.customs_duty_status), formatCurrency(data.tax_amount)],
     ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
   );
   
@@ -1010,7 +1018,7 @@ export const printInvoice = (data: InvoiceData) => {
   }
   
   invoiceFootRows.push(
-    ['', '', 'Tax:', formatCurrency(data.tax_amount)],
+    ['', '', getTaxLabel(data.customs_duty_status), formatCurrency(data.tax_amount)],
     ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
   );
   

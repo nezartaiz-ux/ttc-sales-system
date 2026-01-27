@@ -153,7 +153,7 @@ export const ViewPOModal = ({ open, onOpenChange, purchaseOrder }: ViewPOModalPr
           {/* Totals */}
           <div className="text-right text-sm space-y-1 mb-4">
             <p><span className="font-bold">Subtotal:</span> {formatCurrency(purchaseOrder.total_amount)}</p>
-            <p><span className="font-bold">Tax:</span> {formatCurrency(purchaseOrder.tax_amount)}</p>
+            <p><span className="font-bold">{purchaseOrder.customs_duty_status === 'DDP Aden' || purchaseOrder.customs_duty_status === "DDP Sana'a" ? 'Customs Duty & Sales Tax:' : 'Tax:'}</span> {formatCurrency(purchaseOrder.tax_amount)}</p>
             <p className="text-base"><span className="font-bold">Grand Total:</span> {formatCurrency(purchaseOrder.grand_total)}</p>
           </div>
 

@@ -247,7 +247,7 @@ export const ViewQuotationModal = ({ open, onOpenChange, quotation }: ViewQuotat
                 <p><span className="font-bold">Net Amount:</span> {formatCurrency(netAmount)}</p>
               </>
             )}
-            <p><span className="font-bold">Tax:</span> {formatCurrency(quotation.tax_amount)}</p>
+            <p><span className="font-bold">{quotation.customs_duty_status === 'DDP Aden' || quotation.customs_duty_status === "DDP Sana'a" ? 'Customs Duty & Sales Tax:' : 'Tax:'}</span> {formatCurrency(quotation.tax_amount)}</p>
             <p className="text-base"><span className="font-bold">Grand Total:</span> {formatCurrency(quotation.grand_total)}</p>
           </div>
 
