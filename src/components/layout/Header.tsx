@@ -109,7 +109,7 @@ export const Header = ({ onMenuClick, onShowTutorial }: HeaderProps) => {
           {onShowTutorial && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={onShowTutorial}>
+                <Button variant="ghost" size="icon" onClick={onShowTutorial} data-tour="header-help">
                   <HelpCircle className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -127,7 +127,7 @@ export const Header = ({ onMenuClick, onShowTutorial }: HeaderProps) => {
           </Button>
           
           {/* User info with name */}
-          <div className="hidden sm:flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2" data-tour="header-user">
             <Avatar>
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {profile?.initials || 'U'}
