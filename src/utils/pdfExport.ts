@@ -164,6 +164,7 @@ interface POData {
   order_number: string;
   supplier_name: string;
   expected_delivery_date: string;
+  order_date?: string;
   total_amount: number;
   tax_amount: number;
   grand_total: number;
@@ -176,13 +177,16 @@ interface POData {
   notes?: string;
   created_by_name?: string;
   customs_duty_status?: string;
+  discount_type?: string;
+  discount_value?: number;
 }
 
 interface InvoiceData {
   invoice_number: string;
   customer_name: string;
   invoice_type: string;
-  due_date: string;
+  invoice_date?: string;
+  due_date?: string;
   total_amount: number;
   tax_amount: number;
   grand_total: number;
@@ -406,39 +410,69 @@ export const generatePOPDF = (data: POData) => {
   doc.setFont('helvetica', 'bold');
   doc.text('PURCHASE ORDER', 105, 32, { align: 'center' });
   
-  // PO details - compact two-column layout
+  // PO details - organized two-column layout
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
   let yPos = 40;
-  const col1X = 14;
-  const col2X = pageWidth / 2 + 5;
+  const labelX = 14;
+  const valueX = 38;
+  const rightLabelX = pageWidth / 2 + 10;
+  const rightValueX = pageWidth / 2 + 48;
   
   doc.setFont('helvetica', 'bold');
-  doc.text('PO #:', col1X, yPos);
+  doc.text('PO #:', labelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.order_number, col1X + 15, yPos);
+  doc.text(data.order_number, valueX, yPos);
   
   doc.setFont('helvetica', 'bold');
-  doc.text('Expected Delivery:', col2X, yPos);
+  doc.text('Order Date:', rightLabelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.expected_delivery_date, col2X + 35, yPos);
+  doc.text(data.order_date || 'N/A', rightValueX, yPos);
   
-  yPos += 5;
+  yPos += 6;
   doc.setFont('helvetica', 'bold');
-  doc.text('Supplier:', col1X, yPos);
+  doc.text('Supplier:', labelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.supplier_name, col1X + 18, yPos);
+  doc.text(data.supplier_name, valueX, yPos);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Expected Delivery:', rightLabelX, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.expected_delivery_date, rightValueX, yPos);
   
   if (data.customs_duty_status) {
+    yPos += 6;
     doc.setFont('helvetica', 'bold');
-    doc.text('Customs:', col2X, yPos);
+    doc.text('Customs:', labelX, yPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(data.customs_duty_status, col2X + 18, yPos);
+    doc.text(data.customs_duty_status, valueX, yPos);
   }
   
-  // Items table
+  // Items table - Calculate amounts for discount
+  const poDiscountAmount = (data.discount_value && data.discount_value > 0)
+    ? (data.discount_type === 'percentage'
+      ? (data.total_amount * data.discount_value / 100)
+      : data.discount_value)
+    : 0;
+  const poNetAmount = data.total_amount - poDiscountAmount;
+  
+  const poFootRows: any[] = [];
+  
+  // Only show Discount and Net Amount if discount is applied
+  if (data.discount_value && data.discount_value > 0) {
+    const discountLabel = data.discount_type === 'percentage' 
+      ? `Given Discount (${data.discount_value}%):`
+      : 'Given Discount:';
+    poFootRows.push(['', '', discountLabel, `-${formatCurrency(poDiscountAmount)}`]);
+    poFootRows.push(['', '', 'Net Amount:', formatCurrency(poNetAmount)]);
+  }
+  
+  poFootRows.push(
+    ['', '', getTaxLabel(data.customs_duty_status), formatCurrency(data.tax_amount)],
+    ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
+  );
+  
   autoTable(doc, {
-    startY: yPos + 5,
+    startY: yPos + 6,
     head: [['Item', 'Qty', 'Unit Price', 'Total']],
     body: data.items.map(item => [
       item.name,
@@ -446,11 +480,7 @@ export const generatePOPDF = (data: POData) => {
       formatCurrency(item.unit_price),
       formatCurrency(item.total_price)
     ]),
-    foot: [
-      ['', '', 'Subtotal:', formatCurrency(data.total_amount)],
-      ['', '', getTaxLabel(data.customs_duty_status), formatCurrency(data.tax_amount)],
-      ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
-    ],
+    foot: poFootRows,
     showFoot: 'lastPage',
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [60, 60, 60], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -708,39 +738,69 @@ export const printPO = (data: POData) => {
   doc.setFont('helvetica', 'bold');
   doc.text('PURCHASE ORDER', 105, 32, { align: 'center' });
   
-  // PO details - compact two-column layout
+  // PO details - organized two-column layout
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
   let yPos = 40;
-  const col1X = 14;
-  const col2X = pageWidth / 2 + 5;
+  const labelX = 14;
+  const valueX = 38;
+  const rightLabelX = pageWidth / 2 + 10;
+  const rightValueX = pageWidth / 2 + 48;
   
   doc.setFont('helvetica', 'bold');
-  doc.text('PO #:', col1X, yPos);
+  doc.text('PO #:', labelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.order_number, col1X + 15, yPos);
+  doc.text(data.order_number, valueX, yPos);
   
   doc.setFont('helvetica', 'bold');
-  doc.text('Expected Delivery:', col2X, yPos);
+  doc.text('Order Date:', rightLabelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.expected_delivery_date, col2X + 35, yPos);
+  doc.text(data.order_date || 'N/A', rightValueX, yPos);
   
-  yPos += 5;
+  yPos += 6;
   doc.setFont('helvetica', 'bold');
-  doc.text('Supplier:', col1X, yPos);
+  doc.text('Supplier:', labelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.supplier_name, col1X + 18, yPos);
+  doc.text(data.supplier_name, valueX, yPos);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Expected Delivery:', rightLabelX, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.expected_delivery_date, rightValueX, yPos);
   
   if (data.customs_duty_status) {
+    yPos += 6;
     doc.setFont('helvetica', 'bold');
-    doc.text('Customs:', col2X, yPos);
+    doc.text('Customs:', labelX, yPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(data.customs_duty_status, col2X + 18, yPos);
+    doc.text(data.customs_duty_status, valueX, yPos);
   }
   
-  // Items table
+  // Items table - Calculate amounts for discount
+  const poDiscountAmount = (data.discount_value && data.discount_value > 0)
+    ? (data.discount_type === 'percentage'
+      ? (data.total_amount * data.discount_value / 100)
+      : data.discount_value)
+    : 0;
+  const poNetAmount = data.total_amount - poDiscountAmount;
+  
+  const poFootRows: any[] = [];
+  
+  // Only show Discount and Net Amount if discount is applied
+  if (data.discount_value && data.discount_value > 0) {
+    const discountLabel = data.discount_type === 'percentage' 
+      ? `Given Discount (${data.discount_value}%):`
+      : 'Given Discount:';
+    poFootRows.push(['', '', discountLabel, `-${formatCurrency(poDiscountAmount)}`]);
+    poFootRows.push(['', '', 'Net Amount:', formatCurrency(poNetAmount)]);
+  }
+  
+  poFootRows.push(
+    ['', '', getTaxLabel(data.customs_duty_status), formatCurrency(data.tax_amount)],
+    ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
+  );
+  
   autoTable(doc, {
-    startY: yPos + 5,
+    startY: yPos + 6,
     head: [['Item', 'Qty', 'Unit Price', 'Total']],
     body: data.items.map(item => [
       item.name,
@@ -748,11 +808,7 @@ export const printPO = (data: POData) => {
       formatCurrency(item.unit_price),
       formatCurrency(item.total_price)
     ]),
-    foot: [
-      ['', '', 'Subtotal:', formatCurrency(data.total_amount)],
-      ['', '', getTaxLabel(data.customs_duty_status), formatCurrency(data.tax_amount)],
-      ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
-    ],
+    foot: poFootRows,
     showFoot: 'lastPage',
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [60, 60, 60], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -821,40 +877,41 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   doc.setFont('helvetica', 'bold');
   doc.text('SALES INVOICE', 105, 32, { align: 'center' });
   
-  // Invoice details - compact two-column layout
+  // Invoice details - organized two-column layout
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
   let yPos = 40;
-  const col1X = 14;
-  const col2X = pageWidth / 2 + 5;
+  const labelX = 14;
+  const valueX = 38;
+  const rightLabelX = pageWidth / 2 + 10;
+  const rightValueX = pageWidth / 2 + 48;
   
   doc.setFont('helvetica', 'bold');
-  doc.text('Invoice #:', col1X, yPos);
+  doc.text('Invoice #:', labelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.invoice_number, col1X + 20, yPos);
+  doc.text(data.invoice_number, valueX, yPos);
   
   doc.setFont('helvetica', 'bold');
-  doc.text('Due Date:', col2X, yPos);
+  doc.text('Invoice Date:', rightLabelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.due_date, col2X + 20, yPos);
+  doc.text(data.invoice_date || 'N/A', rightValueX, yPos);
   
-  yPos += 5;
+  yPos += 6;
   doc.setFont('helvetica', 'bold');
-  doc.text('Customer:', col1X, yPos);
+  doc.text('Customer:', labelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.customer_name, col1X + 22, yPos);
+  doc.text(data.customer_name, valueX, yPos);
   
   doc.setFont('helvetica', 'bold');
-  doc.text('Type:', col2X, yPos);
+  doc.text('Type:', rightLabelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.invoice_type.toUpperCase(), col2X + 12, yPos);
+  doc.text(data.invoice_type.toUpperCase(), rightValueX, yPos);
   
   if (data.customs_duty_status) {
-    yPos += 5;
+    yPos += 6;
     doc.setFont('helvetica', 'bold');
-    doc.text('Customs:', col1X, yPos);
+    doc.text('Customs:', labelX, yPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(data.customs_duty_status, col1X + 18, yPos);
+    doc.text(data.customs_duty_status, valueX, yPos);
   }
   
   // Items table - Calculate amounts
@@ -882,7 +939,7 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   );
   
   autoTable(doc, {
-    startY: yPos + 5,
+    startY: yPos + 6,
     head: [['Item', 'Qty', 'Unit Price', 'Total']],
     body: data.items.map(item => [
       item.name,
@@ -896,6 +953,7 @@ export const generateInvoicePDF = (data: InvoiceData) => {
     headStyles: { fillColor: [60, 60, 60], textColor: [255, 255, 255], fontStyle: 'bold' },
     margin: { bottom: marginBottom }
   });
+  
   
   // Add amount in words
   let invoiceCurrentY = (doc as any).lastAutoTable.finalY + 6;
@@ -974,68 +1032,69 @@ export const printInvoice = (data: InvoiceData) => {
   doc.setFont('helvetica', 'bold');
   doc.text('SALES INVOICE', 105, 32, { align: 'center' });
   
-  // Invoice details - compact two-column layout
+  // Invoice details - organized two-column layout
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
   let yPos = 40;
-  const col1X = 14;
-  const col2X = pageWidth / 2 + 5;
+  const labelX = 14;
+  const valueX = 38;
+  const rightLabelX = pageWidth / 2 + 10;
+  const rightValueX = pageWidth / 2 + 48;
   
   doc.setFont('helvetica', 'bold');
-  doc.text('Invoice #:', col1X, yPos);
+  doc.text('Invoice #:', labelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.invoice_number, col1X + 20, yPos);
+  doc.text(data.invoice_number, valueX, yPos);
   
   doc.setFont('helvetica', 'bold');
-  doc.text('Due Date:', col2X, yPos);
+  doc.text('Invoice Date:', rightLabelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.due_date, col2X + 20, yPos);
+  doc.text(data.invoice_date || 'N/A', rightValueX, yPos);
   
-  yPos += 5;
+  yPos += 6;
   doc.setFont('helvetica', 'bold');
-  doc.text('Customer:', col1X, yPos);
+  doc.text('Customer:', labelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.customer_name, col1X + 22, yPos);
+  doc.text(data.customer_name, valueX, yPos);
   
   doc.setFont('helvetica', 'bold');
-  doc.text('Type:', col2X, yPos);
+  doc.text('Type:', rightLabelX, yPos);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.invoice_type.toUpperCase(), col2X + 12, yPos);
+  doc.text(data.invoice_type.toUpperCase(), rightValueX, yPos);
   
   if (data.customs_duty_status) {
-    yPos += 5;
+    yPos += 6;
     doc.setFont('helvetica', 'bold');
-    doc.text('Customs:', col1X, yPos);
+    doc.text('Customs:', labelX, yPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(data.customs_duty_status, col1X + 18, yPos);
+    doc.text(data.customs_duty_status, valueX, yPos);
   }
   
   // Items table - Calculate amounts
-  const invoiceDiscountAmount = (data.discount_value && data.discount_value > 0)
+  const printInvoiceDiscountAmount = (data.discount_value && data.discount_value > 0)
     ? (data.discount_type === 'percentage'
       ? (data.total_amount * data.discount_value / 100)
       : data.discount_value)
     : 0;
-  const invoiceNetAmount = data.total_amount - invoiceDiscountAmount;
+  const printInvoiceNetAmount = data.total_amount - printInvoiceDiscountAmount;
   
-  const invoiceFootRows: any[] = [];
+  const printInvoiceFootRows: any[] = [];
   
   // Only show Discount and Net Amount if discount is applied
   if (data.discount_value && data.discount_value > 0) {
     const discountLabel = data.discount_type === 'percentage' 
       ? `Given Discount (${data.discount_value}%):`
       : 'Given Discount:';
-    invoiceFootRows.push(['', '', discountLabel, `-${formatCurrency(invoiceDiscountAmount)}`]);
-    invoiceFootRows.push(['', '', 'Net Amount:', formatCurrency(invoiceNetAmount)]);
+    printInvoiceFootRows.push(['', '', discountLabel, `-${formatCurrency(printInvoiceDiscountAmount)}`]);
+    printInvoiceFootRows.push(['', '', 'Net Amount:', formatCurrency(printInvoiceNetAmount)]);
   }
   
-  invoiceFootRows.push(
+  printInvoiceFootRows.push(
     ['', '', getTaxLabel(data.customs_duty_status), formatCurrency(data.tax_amount)],
     ['', '', 'Grand Total:', formatCurrency(data.grand_total)]
   );
   
   autoTable(doc, {
-    startY: yPos + 5,
+    startY: yPos + 6,
     head: [['Item', 'Qty', 'Unit Price', 'Total']],
     body: data.items.map(item => [
       item.name,
@@ -1043,7 +1102,7 @@ export const printInvoice = (data: InvoiceData) => {
       formatCurrency(item.unit_price),
       formatCurrency(item.total_price)
     ]),
-    foot: invoiceFootRows,
+    foot: printInvoiceFootRows,
     showFoot: 'lastPage',
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [60, 60, 60], textColor: [255, 255, 255], fontStyle: 'bold' },

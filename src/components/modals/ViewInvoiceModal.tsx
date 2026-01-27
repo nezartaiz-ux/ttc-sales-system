@@ -91,6 +91,7 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice, onCreateDelivery
       invoice_number: invoice.invoice_number,
       customer_name: invoice.customers?.name || 'N/A',
       invoice_type: invoice.invoice_type,
+      invoice_date: invoice.created_at ? new Date(invoice.created_at).toISOString().split('T')[0] : 'N/A',
       due_date: invoice.due_date || 'N/A',
       total_amount: invoice.total_amount || 0,
       tax_amount: invoice.tax_amount || 0,
@@ -114,6 +115,7 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice, onCreateDelivery
       invoice_number: invoice.invoice_number,
       customer_name: invoice.customers?.name || 'N/A',
       invoice_type: invoice.invoice_type,
+      invoice_date: invoice.created_at ? new Date(invoice.created_at).toISOString().split('T')[0] : 'N/A',
       due_date: invoice.due_date || 'N/A',
       total_amount: invoice.total_amount || 0,
       tax_amount: invoice.tax_amount || 0,
@@ -187,27 +189,31 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice, onCreateDelivery
           {/* Title */}
           <h1 className="text-center text-xl font-bold my-4">SALES INVOICE</h1>
 
-          {/* Details */}
-          <div className="grid grid-cols-2 gap-x-8 gap-y-1 mb-4 text-sm">
-            <div className="flex gap-2">
-              <span className="font-bold">Invoice #:</span>
-              <span>{invoice.invoice_number}</span>
+          {/* Details - organized two-column layout */}
+          <div className="mb-4 text-sm space-y-1">
+            <div className="grid grid-cols-2 gap-x-8">
+              <div className="flex">
+                <span className="font-bold w-24">Invoice #:</span>
+                <span>{invoice.invoice_number}</span>
+              </div>
+              <div className="flex">
+                <span className="font-bold w-24">Invoice Date:</span>
+                <span>{invoice.created_at ? new Date(invoice.created_at).toISOString().split('T')[0] : 'N/A'}</span>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <span className="font-bold">Due Date:</span>
-              <span>{invoice.due_date || 'N/A'}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="font-bold">Customer:</span>
-              <span>{invoice.customers?.name || 'N/A'}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="font-bold">Type:</span>
-              <span className="uppercase">{invoice.invoice_type}</span>
+            <div className="grid grid-cols-2 gap-x-8">
+              <div className="flex">
+                <span className="font-bold w-24">Customer:</span>
+                <span>{invoice.customers?.name || 'N/A'}</span>
+              </div>
+              <div className="flex">
+                <span className="font-bold w-24">Type:</span>
+                <span className="uppercase">{invoice.invoice_type}</span>
+              </div>
             </div>
             {invoice.customs_duty_status && (
-              <div className="flex gap-2 col-span-2">
-                <span className="font-bold">Customs:</span>
+              <div className="flex">
+                <span className="font-bold w-24">Customs:</span>
                 <span>{invoice.customs_duty_status}</span>
               </div>
             )}
@@ -237,14 +243,13 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice, onCreateDelivery
 
           {/* Totals */}
           <div className="text-right text-sm space-y-1 mb-4">
-            <p><span className="font-bold">Value:</span> {formatCurrency(invoice.total_amount)}</p>
             {invoice.discount_value && invoice.discount_value > 0 && (
               <>
                 <p>
                   <span className="font-bold">
                     {invoice.discount_type === 'percentage' 
-                      ? `Discount (${invoice.discount_value}%):` 
-                      : 'Discount:'}
+                      ? `Given Discount (${invoice.discount_value}%):` 
+                      : 'Given Discount:'}
                   </span> -{formatCurrency(discountAmount)}
                 </p>
                 <p><span className="font-bold">Net Amount:</span> {formatCurrency(netAmount)}</p>
@@ -253,7 +258,6 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice, onCreateDelivery
             <p><span className="font-bold">{invoice.customs_duty_status === 'DDP Aden' || invoice.customs_duty_status === "DDP Sana'a" ? 'Customs Duty & Sales Tax:' : 'Tax:'}</span> {formatCurrency(invoice.tax_amount)}</p>
             <p className="text-base"><span className="font-bold">Grand Total:</span> {formatCurrency(invoice.grand_total)}</p>
           </div>
-
           {/* Amount in Words */}
           <div className="mb-4 text-sm">
             <span className="font-bold">Amount in Words:</span>

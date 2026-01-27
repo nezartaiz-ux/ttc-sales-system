@@ -41,7 +41,9 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
     expected_delivery_date: new Date().toISOString().split('T')[0], // Set to today's date
     customs_duty_status: '',
     notes: '',
-    status: 'sent' as 'draft' | 'sent' | 'received'
+    status: 'sent' as 'draft' | 'sent' | 'received',
+    discount_type: '' as '' | 'percentage' | 'fixed',
+    discount_value: 0
   });
   const [items, setItems] = useState<POItem[]>([]);
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
@@ -153,13 +155,13 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
           setItems(importedItems);
         }
 
-        // Load customs duty status from quotation
-        if (quotation.customs_duty_status) {
-          setFormData(prev => ({
-            ...prev,
-            customs_duty_status: quotation.customs_duty_status
-          }));
-        }
+        // Load customs duty status and discount from quotation
+        setFormData(prev => ({
+          ...prev,
+          customs_duty_status: quotation.customs_duty_status || '',
+          discount_type: (quotation.discount_type || '') as '' | 'percentage' | 'fixed',
+          discount_value: quotation.discount_value || 0
+        }));
 
         toast({ 
           title: 'Success', 
@@ -174,7 +176,18 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
   };
 
   const calculateTotals = () => {
-    const total_amount = items.reduce((sum, item) => sum + item.total_price, 0);
+    const subtotal = items.reduce((sum, item) => sum + item.total_price, 0);
+    
+    // Calculate discount
+    let discountAmount = 0;
+    if (formData.discount_type && formData.discount_value > 0) {
+      if (formData.discount_type === 'percentage') {
+        discountAmount = subtotal * formData.discount_value / 100;
+      } else {
+        discountAmount = formData.discount_value;
+      }
+    }
+    const netAmount = subtotal - discountAmount;
     
     // Calculate tax based on customs duty status
     let taxRate = 0;
@@ -185,9 +198,9 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
     }
     // CIF Aden Freezone = 0%
     
-    const tax_amount = total_amount * taxRate;
-    const grand_total = total_amount + tax_amount;
-    return { total_amount, tax_amount, grand_total, taxRate };
+    const tax_amount = netAmount * taxRate;
+    const grand_total = netAmount + tax_amount;
+    return { total_amount: subtotal, discount_amount: discountAmount, net_amount: netAmount, tax_amount, grand_total, taxRate };
   };
 
   const getTaxLabel = () => {
@@ -243,7 +256,9 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
         customs_duty_status: formData.customs_duty_status || null,
         notes: formData.notes.trim() || null,
         status: formData.status,
-        created_by: user.id
+        created_by: user.id,
+        discount_type: formData.discount_type || null,
+        discount_value: formData.discount_value || null
       };
 
       const { data: po, error: poError } = await supabase
@@ -274,7 +289,8 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
       onSuccess?.();
 
       // Reset form
-      setFormData({ supplier_id: '', expected_delivery_date: '', customs_duty_status: '', notes: '', status: 'sent' });
+      setFormData({ supplier_id: '', expected_delivery_date: '', customs_duty_status: '', notes: '', status: 'sent', discount_type: '', discount_value: 0 });
+      setItems([]);
       setItems([]);
 
     } catch (error: any) {
@@ -338,18 +354,48 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Customs Duty Status</Label>
-            <Select value={formData.customs_duty_status} onValueChange={(v) => setFormData(p => ({ ...p, customs_duty_status: v }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select customs duty status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="CIF Aden Freezone">CIF Aden Freezone (0% Tax)</SelectItem>
-                <SelectItem value="DDP Aden">DDP Aden (17% Tax)</SelectItem>
-                <SelectItem value="DDP Sana'a">DDP Sana'a (21% Tax)</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Customs Duty Status</Label>
+              <Select value={formData.customs_duty_status} onValueChange={(v) => setFormData(p => ({ ...p, customs_duty_status: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select customs duty status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CIF Aden Freezone">CIF Aden Freezone (0% Tax)</SelectItem>
+                  <SelectItem value="DDP Aden">DDP Aden (17% Tax)</SelectItem>
+                  <SelectItem value="DDP Sana'a">DDP Sana'a (21% Tax)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2">
+              <div className="flex-1 space-y-2">
+                <Label>Discount Type</Label>
+                <Select value={formData.discount_type} onValueChange={(v: '' | 'percentage' | 'fixed') => setFormData(p => ({ ...p, discount_type: v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="No discount" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percentage">Percentage (%)</SelectItem>
+                    <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.discount_type && (
+                <div className="flex-1 space-y-2">
+                  <Label>Discount Value</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.discount_value || ''}
+                    onChange={(e) => setFormData(p => ({ ...p, discount_value: Number(e.target.value) }))}
+                    placeholder={formData.discount_type === 'percentage' ? '%' : '$'}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <Card>
@@ -455,10 +501,18 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
             <Card>
               <CardContent className="pt-6">
                 <div className="space-y-2 text-right">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span>${totals.total_amount.toFixed(2)}</span>
-                  </div>
+                  {formData.discount_type && formData.discount_value > 0 && (
+                    <>
+                      <div className="flex justify-between">
+                        <span>{formData.discount_type === 'percentage' ? `Given Discount (${formData.discount_value}%):` : 'Given Discount:'}</span>
+                        <span>-${totals.discount_amount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Net Amount:</span>
+                        <span>${totals.net_amount.toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex justify-between">
                     <span>{getTaxLabel()}:</span>
                     <span>${totals.tax_amount.toFixed(2)}</span>

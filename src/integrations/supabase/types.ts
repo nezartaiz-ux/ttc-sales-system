@@ -401,6 +401,8 @@ export type Database = {
           created_at: string
           created_by: string
           customs_duty_status: string | null
+          discount_type: string | null
+          discount_value: number | null
           expected_delivery_date: string | null
           grand_total: number
           id: string
@@ -416,6 +418,8 @@ export type Database = {
           created_at?: string
           created_by: string
           customs_duty_status?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           expected_delivery_date?: string | null
           grand_total?: number
           id?: string
@@ -431,6 +435,8 @@ export type Database = {
           created_at?: string
           created_by?: string
           customs_duty_status?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           expected_delivery_date?: string | null
           grand_total?: number
           id?: string
