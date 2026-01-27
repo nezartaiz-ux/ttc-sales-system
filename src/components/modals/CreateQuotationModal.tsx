@@ -575,20 +575,18 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
             <Card>
               <CardContent className="pt-6">
                 <div className="space-y-2 text-right">
-                  <div className="flex justify-between">
-                    <span>Value:</span>
-                    <span>${totals.subtotal.toFixed(2)}</span>
-                  </div>
                   {totals.discount_amount > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Given Discount ({formData.discount_type === 'percentage' ? `${formData.discount_value}%` : 'Fixed'}):</span>
-                      <span>-${totals.discount_amount.toFixed(2)}</span>
-                    </div>
+                    <>
+                      <div className="flex justify-between text-green-600">
+                        <span>Given Discount ({formData.discount_type === 'percentage' ? `${formData.discount_value}%` : 'Fixed'}):</span>
+                        <span>-${totals.discount_amount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Net Amount:</span>
+                        <span>${totals.net_amount.toFixed(2)}</span>
+                      </div>
+                    </>
                   )}
-                  <div className="flex justify-between">
-                    <span>Net Amount:</span>
-                    <span>${totals.net_amount.toFixed(2)}</span>
-                  </div>
                   <div className="flex justify-between">
                     <span>{getTaxLabel()}:</span>
                     <span>${totals.tax_amount.toFixed(2)}</span>
