@@ -265,9 +265,7 @@ export const generateQuotationPDF = (data: QuotationData) => {
   
   const footRows: any[] = [];
   
-  // Always show Value first
-  footRows.push(['', '', 'Value:', formatCurrency(data.total_amount)]);
-  
+  // Only show Value, Discount, and Net Amount if discount is applied
   if (data.discount_value && data.discount_value > 0) {
     const discountLabel = data.discount_type === 'percentage' 
       ? `Given Discount (${data.discount_value}%):`
@@ -564,8 +562,8 @@ export const printQuotation = (data: QuotationData) => {
   const netAmount = data.total_amount - discountAmount;
   
   const footRows: any[] = [];
-  footRows.push(['', '', 'Value:', formatCurrency(data.total_amount)]);
   
+  // Only show Discount and Net Amount if discount is applied
   if (data.discount_value && data.discount_value > 0) {
     const discountLabel = data.discount_type === 'percentage' 
       ? `Given Discount (${data.discount_value}%):`
@@ -854,12 +852,12 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   const invoiceNetAmount = data.total_amount - invoiceDiscountAmount;
   
   const invoiceFootRows: any[] = [];
-  invoiceFootRows.push(['', '', 'Value:', formatCurrency(data.total_amount)]);
   
+  // Only show Discount and Net Amount if discount is applied
   if (data.discount_value && data.discount_value > 0) {
     const discountLabel = data.discount_type === 'percentage' 
-      ? `Discount (${data.discount_value}%):`
-      : 'Discount:';
+      ? `Given Discount (${data.discount_value}%):`
+      : 'Given Discount:';
     invoiceFootRows.push(['', '', discountLabel, `-${formatCurrency(invoiceDiscountAmount)}`]);
     invoiceFootRows.push(['', '', 'Net Amount:', formatCurrency(invoiceNetAmount)]);
   }
@@ -1007,12 +1005,12 @@ export const printInvoice = (data: InvoiceData) => {
   const invoiceNetAmount = data.total_amount - invoiceDiscountAmount;
   
   const invoiceFootRows: any[] = [];
-  invoiceFootRows.push(['', '', 'Value:', formatCurrency(data.total_amount)]);
   
+  // Only show Discount and Net Amount if discount is applied
   if (data.discount_value && data.discount_value > 0) {
     const discountLabel = data.discount_type === 'percentage' 
-      ? `Discount (${data.discount_value}%):`
-      : 'Discount:';
+      ? `Given Discount (${data.discount_value}%):`
+      : 'Given Discount:';
     invoiceFootRows.push(['', '', discountLabel, `-${formatCurrency(invoiceDiscountAmount)}`]);
     invoiceFootRows.push(['', '', 'Net Amount:', formatCurrency(invoiceNetAmount)]);
   }
