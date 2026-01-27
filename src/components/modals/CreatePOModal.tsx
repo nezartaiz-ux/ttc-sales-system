@@ -192,9 +192,9 @@ export const CreatePOModal = ({ open, onOpenChange, onSuccess }: CreatePOModalPr
 
   const getTaxLabel = () => {
     if (formData.customs_duty_status === 'DDP Aden') {
-      return 'Tax (17%)';
+      return 'Customs Duty & Sales Tax (17%)';
     } else if (formData.customs_duty_status === 'DDP Sana\'a') {
-      return 'Tax (21%)';
+      return 'Customs Duty & Sales Tax (21%)';
     }
     return 'Tax (0%)';
   };

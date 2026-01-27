@@ -250,7 +250,7 @@ export const ViewInvoiceModal = ({ open, onOpenChange, invoice, onCreateDelivery
                 <p><span className="font-bold">Net Amount:</span> {formatCurrency(netAmount)}</p>
               </>
             )}
-            <p><span className="font-bold">Tax:</span> {formatCurrency(invoice.tax_amount)}</p>
+            <p><span className="font-bold">{invoice.customs_duty_status === 'DDP Aden' || invoice.customs_duty_status === "DDP Sana'a" ? 'Customs Duty & Sales Tax:' : 'Tax:'}</span> {formatCurrency(invoice.tax_amount)}</p>
             <p className="text-base"><span className="font-bold">Grand Total:</span> {formatCurrency(invoice.grand_total)}</p>
           </div>
 
