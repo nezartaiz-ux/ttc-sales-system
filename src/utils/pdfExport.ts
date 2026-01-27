@@ -343,6 +343,13 @@ export const generateQuotationPDF = (data: QuotationData) => {
                        (trimmedLine === trimmedLine.toUpperCase() && trimmedLine.length > 3 && trimmedLine.length < 60);
       
       if (isHeader) {
+        // Add one row space before bold headers
+        notesY += 4;
+        if (notesY > pageHeight - marginBottom) {
+          doc.addPage();
+          addPDFHeader(doc, true);
+          notesY = 35;
+        }
         doc.setFont('helvetica', 'bold');
         doc.text(trimmedLine, 14, notesY);
         doc.setFont('helvetica', 'normal');
@@ -638,6 +645,13 @@ export const printQuotation = (data: QuotationData) => {
                        (trimmedLine === trimmedLine.toUpperCase() && trimmedLine.length > 3 && trimmedLine.length < 60);
       
       if (isHeader) {
+        // Add one row space before bold headers
+        notesY += 4;
+        if (notesY > pageHeight - marginBottom) {
+          doc.addPage();
+          addPDFHeader(doc, true);
+          notesY = 35;
+        }
         doc.setFont('helvetica', 'bold');
         doc.text(trimmedLine, 14, notesY);
         doc.setFont('helvetica', 'normal');
