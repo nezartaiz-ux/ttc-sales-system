@@ -484,20 +484,18 @@ export const EditQuotationModal = ({ open, onOpenChange, quotation, onSuccess }:
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Value:</span>
-                  <span>${totals.subtotal.toFixed(2)}</span>
-                </div>
                 {totals.discount_amount > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Given Discount ({formData.discount_type === 'percentage' ? `${formData.discount_value}%` : '$'}):</span>
-                    <span>-${totals.discount_amount.toFixed(2)}</span>
-                  </div>
+                  <>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Given Discount ({formData.discount_type === 'percentage' ? `${formData.discount_value}%` : '$'}):</span>
+                      <span>-${totals.discount_amount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Net Amount:</span>
+                      <span>${totals.net_amount.toFixed(2)}</span>
+                    </div>
+                  </>
                 )}
-                <div className="flex justify-between">
-                  <span>Net Amount:</span>
-                  <span>${totals.net_amount.toFixed(2)}</span>
-                </div>
                 <div className="flex justify-between">
                   <span>{getTaxLabel()}:</span>
                   <span>${totals.tax_amount.toFixed(2)}</span>
