@@ -195,6 +195,7 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
   };
 
   const calculateTotals = () => {
+    // subtotal is the original value (before discount)
     const subtotal = items.reduce((sum, item) => sum + item.total_price, 0);
     
     // Apply discount
@@ -207,7 +208,8 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
       }
     }
     
-    const total_amount = subtotal - discount_amount;
+    // net_amount is after discount
+    const net_amount = subtotal - discount_amount;
     
     // Calculate tax based on customs duty status (after discount)
     let taxRate = 0;
@@ -218,9 +220,11 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
     }
     // CIF Aden Freezone = 0%
     
-    const tax_amount = total_amount * taxRate;
-    const grand_total = total_amount + tax_amount;
-    return { subtotal, discount_amount, total_amount, tax_amount, grand_total, taxRate };
+    const tax_amount = net_amount * taxRate;
+    const grand_total = net_amount + tax_amount;
+    
+    // total_amount stores the original subtotal (before discount) for database
+    return { subtotal, discount_amount, net_amount, total_amount: subtotal, tax_amount, grand_total, taxRate };
   };
 
   const getTaxLabel = () => {
@@ -572,18 +576,18 @@ export const CreateQuotationModal = ({ open, onOpenChange, onSuccess }: CreateQu
               <CardContent className="pt-6">
                 <div className="space-y-2 text-right">
                   <div className="flex justify-between">
-                    <span>Subtotal:</span>
+                    <span>Value:</span>
                     <span>${totals.subtotal.toFixed(2)}</span>
                   </div>
                   {totals.discount_amount > 0 && (
                     <div className="flex justify-between text-green-600">
-                      <span>Discount ({formData.discount_type === 'percentage' ? `${formData.discount_value}%` : 'Fixed'}):</span>
+                      <span>Given Discount ({formData.discount_type === 'percentage' ? `${formData.discount_value}%` : 'Fixed'}):</span>
                       <span>-${totals.discount_amount.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span>Total after Discount:</span>
-                    <span>${totals.total_amount.toFixed(2)}</span>
+                    <span>Net Amount:</span>
+                    <span>${totals.net_amount.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>{getTaxLabel()}:</span>
