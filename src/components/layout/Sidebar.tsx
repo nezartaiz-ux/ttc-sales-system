@@ -123,30 +123,30 @@ export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
         "lg:translate-x-0",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="flex flex-col h-full">
-          {/* Logo Section */}
-          <div className="p-6 border-b border-border">
-              <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <Package className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-foreground">Tehama</h2>
-                  <p className="text-xs text-muted-foreground">Sales System</p>
-                </div>
+      <div className="flex flex-col h-full">
+        {/* Logo Section */}
+        <div className="p-6 border-b border-border" data-tour="sidebar-logo">
+            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Package className="w-5 h-5 text-primary-foreground" />
               </div>
-              {/* Mobile close button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden"
-                onClick={onClose}
-              >
-                <X className="w-5 h-5" />
-              </Button>
+              <div>
+                <h2 className="text-lg font-bold text-foreground">Tehama</h2>
+                <p className="text-xs text-muted-foreground">Sales System</p>
+              </div>
             </div>
+            {/* Mobile close button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={onClose}
+            >
+              <X className="w-5 h-5" />
+            </Button>
           </div>
+        </div>
 
           {/* Category Indicator */}
           {!loading && categoryInfo && (
@@ -164,6 +164,12 @@ export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {filteredNavigation.map((item) => {
               const isActive = location.pathname === item.href;
+              const tourId = item.href === '/' ? 'nav-dashboard' 
+                : item.href === '/customers' ? 'nav-customers'
+                : item.href === '/inventory' ? 'nav-inventory'
+                : item.href === '/quotations' ? 'nav-quotations'
+                : item.href === '/sales-invoices' ? 'nav-invoices'
+                : undefined;
               return (
                 <Button
                   key={item.name}
@@ -176,6 +182,7 @@ export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
                   )}
                   asChild
                   onClick={onClose}
+                  data-tour={tourId}
                 >
                   <Link to={item.href}>
                     <item.icon className="w-4 h-4" />
