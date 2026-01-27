@@ -81,6 +81,7 @@ const PurchaseOrders = () => {
     generatePOPDF({
       order_number: po.order_number,
       supplier_name: po.suppliers?.name || 'N/A',
+      order_date: po.created_at ? new Date(po.created_at).toISOString().split('T')[0] : 'N/A',
       expected_delivery_date: po.expected_delivery_date || 'N/A',
       total_amount: po.total_amount || 0,
       tax_amount: po.tax_amount || 0,
@@ -93,7 +94,9 @@ const PurchaseOrders = () => {
       })) || [],
       notes: po.notes,
       created_by_name: displayName(po.profiles?.full_name),
-      customs_duty_status: po.customs_duty_status || undefined
+      customs_duty_status: po.customs_duty_status || undefined,
+      discount_type: po.discount_type,
+      discount_value: po.discount_value
     });
   };
 
@@ -101,6 +104,7 @@ const PurchaseOrders = () => {
     printPO({
       order_number: po.order_number,
       supplier_name: po.suppliers?.name || 'N/A',
+      order_date: po.created_at ? new Date(po.created_at).toISOString().split('T')[0] : 'N/A',
       expected_delivery_date: po.expected_delivery_date || 'N/A',
       total_amount: po.total_amount || 0,
       tax_amount: po.tax_amount || 0,
@@ -113,7 +117,9 @@ const PurchaseOrders = () => {
       })) || [],
       notes: po.notes,
       created_by_name: displayName(po.profiles?.full_name),
-      customs_duty_status: po.customs_duty_status || undefined
+      customs_duty_status: po.customs_duty_status || undefined,
+      discount_type: po.discount_type,
+      discount_value: po.discount_value
     });
   };
 

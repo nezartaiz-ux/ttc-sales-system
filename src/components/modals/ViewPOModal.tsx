@@ -46,6 +46,7 @@ export const ViewPOModal = ({ open, onOpenChange, purchaseOrder }: ViewPOModalPr
     generatePOPDF({
       order_number: purchaseOrder.order_number,
       supplier_name: purchaseOrder.suppliers?.name || 'N/A',
+      order_date: purchaseOrder.created_at ? new Date(purchaseOrder.created_at).toISOString().split('T')[0] : 'N/A',
       expected_delivery_date: purchaseOrder.expected_delivery_date || 'N/A',
       total_amount: purchaseOrder.total_amount || 0,
       tax_amount: purchaseOrder.tax_amount || 0,
@@ -53,7 +54,9 @@ export const ViewPOModal = ({ open, onOpenChange, purchaseOrder }: ViewPOModalPr
       items: purchaseOrder.purchase_order_items || [],
       notes: purchaseOrder.notes,
       created_by_name: displayName(purchaseOrder.profiles?.full_name),
-      customs_duty_status: purchaseOrder.customs_duty_status
+      customs_duty_status: purchaseOrder.customs_duty_status,
+      discount_type: purchaseOrder.discount_type,
+      discount_value: purchaseOrder.discount_value
     });
   };
 
@@ -61,6 +64,7 @@ export const ViewPOModal = ({ open, onOpenChange, purchaseOrder }: ViewPOModalPr
     printPO({
       order_number: purchaseOrder.order_number,
       supplier_name: purchaseOrder.suppliers?.name || 'N/A',
+      order_date: purchaseOrder.created_at ? new Date(purchaseOrder.created_at).toISOString().split('T')[0] : 'N/A',
       expected_delivery_date: purchaseOrder.expected_delivery_date || 'N/A',
       total_amount: purchaseOrder.total_amount || 0,
       tax_amount: purchaseOrder.tax_amount || 0,
@@ -68,7 +72,9 @@ export const ViewPOModal = ({ open, onOpenChange, purchaseOrder }: ViewPOModalPr
       items: purchaseOrder.purchase_order_items || [],
       notes: purchaseOrder.notes,
       created_by_name: displayName(purchaseOrder.profiles?.full_name),
-      customs_duty_status: purchaseOrder.customs_duty_status
+      customs_duty_status: purchaseOrder.customs_duty_status,
+      discount_type: purchaseOrder.discount_type,
+      discount_value: purchaseOrder.discount_value
     });
   };
 
@@ -106,23 +112,31 @@ export const ViewPOModal = ({ open, onOpenChange, purchaseOrder }: ViewPOModalPr
           {/* Title */}
           <h1 className="text-center text-xl font-bold my-4">PURCHASE ORDER</h1>
 
-          {/* Details */}
-          <div className="grid grid-cols-2 gap-x-8 gap-y-1 mb-4 text-sm">
-            <div className="flex gap-2">
-              <span className="font-bold">PO #:</span>
-              <span>{purchaseOrder.order_number}</span>
+          {/* Details - organized two-column layout */}
+          <div className="mb-4 text-sm space-y-1">
+            <div className="grid grid-cols-2 gap-x-8">
+              <div className="flex">
+                <span className="font-bold w-32">PO #:</span>
+                <span>{purchaseOrder.order_number}</span>
+              </div>
+              <div className="flex">
+                <span className="font-bold w-36">Order Date:</span>
+                <span>{purchaseOrder.created_at ? new Date(purchaseOrder.created_at).toISOString().split('T')[0] : 'N/A'}</span>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <span className="font-bold">Expected Delivery:</span>
-              <span>{purchaseOrder.expected_delivery_date || 'N/A'}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="font-bold">Supplier:</span>
-              <span>{purchaseOrder.suppliers?.name || 'N/A'}</span>
+            <div className="grid grid-cols-2 gap-x-8">
+              <div className="flex">
+                <span className="font-bold w-32">Supplier:</span>
+                <span>{purchaseOrder.suppliers?.name || 'N/A'}</span>
+              </div>
+              <div className="flex">
+                <span className="font-bold w-36">Expected Delivery:</span>
+                <span>{purchaseOrder.expected_delivery_date || 'N/A'}</span>
+              </div>
             </div>
             {purchaseOrder.customs_duty_status && (
-              <div className="flex gap-2">
-                <span className="font-bold">Customs:</span>
+              <div className="flex">
+                <span className="font-bold w-32">Customs:</span>
                 <span>{purchaseOrder.customs_duty_status}</span>
               </div>
             )}
@@ -152,7 +166,28 @@ export const ViewPOModal = ({ open, onOpenChange, purchaseOrder }: ViewPOModalPr
 
           {/* Totals */}
           <div className="text-right text-sm space-y-1 mb-4">
-            <p><span className="font-bold">Subtotal:</span> {formatCurrency(purchaseOrder.total_amount)}</p>
+            {purchaseOrder.discount_value && purchaseOrder.discount_value > 0 && (
+              <>
+                <p>
+                  <span className="font-bold">
+                    {purchaseOrder.discount_type === 'percentage' 
+                      ? `Given Discount (${purchaseOrder.discount_value}%):` 
+                      : 'Given Discount:'}
+                  </span> -{formatCurrency(
+                    purchaseOrder.discount_type === 'percentage'
+                      ? (purchaseOrder.total_amount * purchaseOrder.discount_value / 100)
+                      : purchaseOrder.discount_value
+                  )}
+                </p>
+                <p><span className="font-bold">Net Amount:</span> {formatCurrency(
+                  purchaseOrder.total_amount - (
+                    purchaseOrder.discount_type === 'percentage'
+                      ? (purchaseOrder.total_amount * purchaseOrder.discount_value / 100)
+                      : purchaseOrder.discount_value
+                  )
+                )}</p>
+              </>
+            )}
             <p><span className="font-bold">{purchaseOrder.customs_duty_status === 'DDP Aden' || purchaseOrder.customs_duty_status === "DDP Sana'a" ? 'Customs Duty & Sales Tax:' : 'Tax:'}</span> {formatCurrency(purchaseOrder.tax_amount)}</p>
             <p className="text-base"><span className="font-bold">Grand Total:</span> {formatCurrency(purchaseOrder.grand_total)}</p>
           </div>
