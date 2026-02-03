@@ -232,8 +232,8 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
       }
 
       const { error } = await supabase.rpc('update_user_roles', {
-        target_user_id: userId,
-        new_roles: selectedRoles as any,
+        _user_id: userId,
+        _role: selectedRoles[0] as any,
       });
 
       if (error) throw error;
@@ -398,8 +398,8 @@ export const UserManagementModal = ({ open, onOpenChange }: UserManagementModalP
 
       // Set the user's role using RPC
       const { error: roleError } = await supabase.rpc('update_user_roles', {
-        target_user_id: authData.user.id,
-        new_roles: [newUserRole] as any,
+        _user_id: authData.user.id,
+        _role: newUserRole as any,
       });
 
       if (roleError) {
