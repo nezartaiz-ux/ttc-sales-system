@@ -200,7 +200,7 @@ const DeliveryNotes = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-600">
-                {deliveryNotes?.filter(n => n.status === 'pending').length || 0}
+                {deliveryNotes?.filter(n => n.status === 'sent').length || 0}
               </div>
             </CardContent>
           </Card>
@@ -258,7 +258,7 @@ const DeliveryNotes = () => {
                       <TableRow key={note.id}>
                         <TableCell className="font-medium">{note.delivery_note_number}</TableCell>
                         <TableCell>
-                          {note.delivery_note_date && format(new Date(note.delivery_note_date), 'dd/MM/yyyy')}
+                          {note.delivery_date && format(new Date(note.delivery_date), 'dd/MM/yyyy')}
                         </TableCell>
                         <TableCell>{note.customer?.name}</TableCell>
                         <TableCell>{getStatusBadge(note.status)}</TableCell>

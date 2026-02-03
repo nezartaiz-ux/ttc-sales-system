@@ -173,7 +173,7 @@ export const EditDeliveryNoteModal = ({ open, onOpenChange, deliveryNote }: Edit
           mean_number: formData.mean_number,
           driver_name: formData.driver_name,
           notes: formData.notes,
-          status: formData.status,
+          status: formData.status as 'draft' | 'sent' | 'delivered' | 'cancelled',
         })
         .eq('id', deliveryNote.id);
 

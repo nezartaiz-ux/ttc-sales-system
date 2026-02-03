@@ -217,7 +217,7 @@ const Reports = () => {
         query = query.eq('customer_id', dnCustomerId);
       }
       if (dnStatus && dnStatus !== 'all') {
-        query = query.eq('status', dnStatus);
+        query = query.eq('status', dnStatus as 'draft' | 'sent' | 'delivered' | 'cancelled');
       }
       
       const { data, error } = await query;

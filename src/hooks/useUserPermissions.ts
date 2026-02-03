@@ -40,7 +40,7 @@ export const useUserPermissions = () => {
           .rpc('get_user_permissions', { _user_id: user.id });
         
         if (error) throw error;
-        setPermissions(data || []);
+        setPermissions((data || []) as Permission[]);
       } catch (error) {
         console.error('Error fetching permissions:', error);
         setPermissions([]);

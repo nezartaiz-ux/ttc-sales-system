@@ -38,10 +38,12 @@ type DatasheetCategory = 'generator' | 'equipment' | 'tractor';
 
 interface Datasheet {
   id: string;
-  name: string;
-  category: DatasheetCategory;
+  file_name: string;
   file_path: string;
   file_size: number | null;
+  mime_type: string | null;
+  inventory_item_id: string | null;
+  uploaded_by: string;
   created_at: string;
   inventory_items: { name: string; category_id: string } | null;
 }
@@ -97,10 +99,10 @@ const TechnicalDatasheets = () => {
       if (d.inventory_items?.category_id) {
         return categoryIds.includes(d.inventory_items.category_id);
       }
-      // If no inventory item linked, filter by datasheet category matching allowed categories
-      return allowedCategories.includes(d.category);
+      // If no inventory item linked, show it
+      return true;
     });
-  }, [datasheets, hasRestrictions, getCategoryIds, allowedCategories]);
+  }, [datasheets, hasRestrictions, getCategoryIds]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -204,7 +206,7 @@ const TechnicalDatasheets = () => {
     return (allowedCategories[0] as DatasheetCategory) || 'generator';
   }, [allowedCategories, selectedCategory]);
 
-  const filteredDatasheets = accessibleDatasheets.filter(d => d.category === defaultCategory);
+  const filteredDatasheets = accessibleDatasheets;
 
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return 'N/A';
@@ -270,7 +272,7 @@ const TechnicalDatasheets = () => {
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               <FileText className="w-4 h-4 text-muted-foreground" />
-                              {datasheet.name}
+                              {datasheet.file_name}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -285,14 +287,14 @@ const TechnicalDatasheets = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleView(datasheet.file_path, datasheet.name)}
+                                onClick={() => handleView(datasheet.file_path, datasheet.file_name)}
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleDownload(datasheet.file_path, datasheet.name)}
+                                onClick={() => handleDownload(datasheet.file_path, datasheet.file_name)}
                               >
                                 <Download className="w-4 h-4" />
                               </Button>

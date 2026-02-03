@@ -87,10 +87,10 @@ export const UploadDatasheetModal = ({ open, onOpenChange }: UploadDatasheetModa
       const { error: dbError } = await supabase
         .from('technical_datasheets')
         .insert({
-          name,
-          category,
+          file_name: name,
           file_path: fileName,
           file_size: file.size,
+          mime_type: file.type,
           inventory_item_id: itemId && itemId !== "none" ? itemId : null,
           uploaded_by: user.id,
         });
