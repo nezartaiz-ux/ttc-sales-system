@@ -634,6 +634,7 @@ export type Database = {
           created_at: string
           created_by: string
           customer_id: string
+          customs_duty_status: string | null
           due_date: string | null
           grand_total: number
           id: string
@@ -641,6 +642,7 @@ export type Database = {
           invoice_type: Database["public"]["Enums"]["invoice_type"]
           notes: string | null
           payment_terms: number | null
+          purchase_order_id: string | null
           quotation_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           tax_amount: number
@@ -651,6 +653,7 @@ export type Database = {
           created_at?: string
           created_by: string
           customer_id: string
+          customs_duty_status?: string | null
           due_date?: string | null
           grand_total?: number
           id?: string
@@ -658,6 +661,7 @@ export type Database = {
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
           notes?: string | null
           payment_terms?: number | null
+          purchase_order_id?: string | null
           quotation_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           tax_amount?: number
@@ -668,6 +672,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           customer_id?: string
+          customs_duty_status?: string | null
           due_date?: string | null
           grand_total?: number
           id?: string
@@ -675,6 +680,7 @@ export type Database = {
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
           notes?: string | null
           payment_terms?: number | null
+          purchase_order_id?: string | null
           quotation_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           tax_amount?: number
@@ -690,6 +696,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sales_invoices_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sales_invoices_quotation_id_fkey"
             columns: ["quotation_id"]
             isOneToOne: false
@@ -697,6 +710,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      serial_number_counters: {
+        Row: {
+          counter: number
+          created_at: string | null
+          document_type: string
+          id: string
+          month: number
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          counter?: number
+          created_at?: string | null
+          document_type: string
+          id?: string
+          month: number
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          counter?: number
+          created_at?: string | null
+          document_type?: string
+          id?: string
+          month?: number
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: []
       }
       suppliers: {
         Row: {
@@ -915,13 +958,21 @@ export type Database = {
         }
         Returns: boolean
       }
-      update_user_roles: {
-        Args: {
-          _role: Database["public"]["Enums"]["user_role"]
-          _user_id: string
-        }
-        Returns: undefined
-      }
+      update_user_roles:
+        | {
+            Args: {
+              _role: Database["public"]["Enums"]["user_role"]
+              _user_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              new_roles: Database["public"]["Enums"]["user_role"][]
+              target_user_id: string
+            }
+            Returns: undefined
+          }
     }
     Enums: {
       delivery_note_status: "draft" | "sent" | "delivered" | "cancelled"
