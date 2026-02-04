@@ -105,44 +105,59 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          customer_address: string | null
           customer_id: string
           delivery_date: string | null
           delivery_note_number: string
           driver_name: string | null
           id: string
+          mean_number: string | null
+          mean_of_despatch: string | null
+          model: string | null
           notes: string | null
           sales_invoice_id: string | null
           status: Database["public"]["Enums"]["delivery_note_status"]
           updated_at: string
           vehicle_number: string | null
+          warranty_type: string | null
         }
         Insert: {
           created_at?: string
           created_by: string
+          customer_address?: string | null
           customer_id: string
           delivery_date?: string | null
           delivery_note_number: string
           driver_name?: string | null
           id?: string
+          mean_number?: string | null
+          mean_of_despatch?: string | null
+          model?: string | null
           notes?: string | null
           sales_invoice_id?: string | null
           status?: Database["public"]["Enums"]["delivery_note_status"]
           updated_at?: string
           vehicle_number?: string | null
+          warranty_type?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string
+          customer_address?: string | null
           customer_id?: string
           delivery_date?: string | null
           delivery_note_number?: string
           driver_name?: string | null
           id?: string
+          mean_number?: string | null
+          mean_of_despatch?: string | null
+          model?: string | null
           notes?: string | null
           sales_invoice_id?: string | null
           status?: Database["public"]["Enums"]["delivery_note_status"]
           updated_at?: string
           vehicle_number?: string | null
+          warranty_type?: string | null
         }
         Relationships: [
           {
@@ -428,6 +443,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          customs_duty_status: string | null
           expected_delivery_date: string | null
           grand_total: number
           id: string
@@ -442,6 +458,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          customs_duty_status?: string | null
           expected_delivery_date?: string | null
           grand_total?: number
           id?: string
@@ -456,6 +473,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          customs_duty_status?: string | null
           expected_delivery_date?: string | null
           grand_total?: number
           id?: string
@@ -635,6 +653,8 @@ export type Database = {
           created_by: string
           customer_id: string
           customs_duty_status: string | null
+          discount_type: string | null
+          discount_value: number | null
           due_date: string | null
           grand_total: number
           id: string
@@ -654,6 +674,8 @@ export type Database = {
           created_by: string
           customer_id: string
           customs_duty_status?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           due_date?: string | null
           grand_total?: number
           id?: string
@@ -673,6 +695,8 @@ export type Database = {
           created_by?: string
           customer_id?: string
           customs_duty_status?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           due_date?: string | null
           grand_total?: number
           id?: string
@@ -940,6 +964,7 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      get_user_category_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_permissions: {
         Args: { _user_id: string }
         Returns: {
@@ -950,6 +975,14 @@ export type Database = {
       get_user_primary_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      has_category_access: {
+        Args: { _category_id: string; _user_id: string }
+        Returns: boolean
+      }
+      has_permission: {
+        Args: { _action: string; _module: string; _user_id: string }
+        Returns: boolean
       }
       has_role: {
         Args: {
